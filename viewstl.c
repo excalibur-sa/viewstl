@@ -55,7 +55,10 @@ char *begin_stl_solid = "solid";
 char *poly_normal = "facet";
 char *poly_vertex = "vertex";
 char *poly_end = "endfacet";
-char arg1[100], arg2[20], arg3[20], window_name[120];
+char arg1[100];
+char arg2[50];
+char arg3[20];
+char window_title[256];
 int poly_count = 0; 
 FILE *filein; /* Filehandle for the STL file to be viewed */
 int window; /* The number of our GLUT window */
@@ -394,22 +397,14 @@ void DrawGLScene()
     GetFPS();  /* Get frame rate stats */
 
     /* Copy saved window name into temp string arg1 so that we can add stats */
-    strcpy (arg1, window_name);
-    if (sprintf(arg2, "%.2f FPS", FrameRate))
-    {
-        strcat (arg1, arg2);
-    }
+
     /* cut down on the number of redraws on window title.  Only draw once per sample*/
-    if (FrameCount == 0)
-    {
-        glutSetWindowTitle(arg1);
+    if (FrameCount == 0) {
+        char window_title_fps[sizeof(window_title)+32];
+        snprintf(window_title_fps, sizeof(window_title_fps), "%s - %.2f FPS", window_title, FrameRate);
+        glutSetWindowTitle(window_title_fps);
     }
 }
-
-
-
-
-
 
 /* The function called whenever a mouse button event occurs */
 void mouseButtonPress(int button, int state, int x, int y)
@@ -684,11 +679,11 @@ int main(int argc, char *argv[])
     /* the window starts at the upper left corner of the screen */
     glutInitWindowPosition(0, 0);  
 
-    strcpy (arg1, "ViewStl 0.35 viewing: ");
+    /*strcpy (arg1, "ViewStl 0.35 viewing: ");
     strcat (arg1, argv[1]);
 
-    /* getting a warning here about passing arg1 of sprinf incompatable pointer type ?? */
-    /* WTF ?!? */
+     getting a warning here about passing arg1 of sprinf incompatable pointer type ?? 
+     WTF ?!? 
     if (sprintf(arg2, "       %i Polygons using ", poly_count))
     {
         strcat (arg1, arg2);
@@ -696,14 +691,16 @@ int main(int argc, char *argv[])
     if (sprintf(arg2, "%i Kb    ", mem_size/1024))
     {
         strcat (arg1, arg2);
-    }
+    }*/
+
+    snprintf(window_title, sizeof(window_title), "ViewStl 0.35 viewing: %s - %i polys - %iKB", argv[1], poly_count, mem_size/1024);
 
     /* save most of the name for use later */
-    strcpy (window_name, arg1);
+    //strcpy (window_title, arg1);
 
     if (sprintf(arg2, "%.2f FPS", FrameRate))
     {
-        strcat (arg1, arg2);
+        /*strcat (arg1, arg2);*/
     }
     window = glutCreateWindow(arg1); 
 
