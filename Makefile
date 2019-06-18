@@ -1,15 +1,15 @@
-#INCLUDE = -I/usr/X11R6/include
-#LIBDIR  = -L/usr/X11/lib -L/usr/X11R6/lib
- 
-COMPILERFLAGS = -fomit-frame-pointer -march=native -Wall -pipe
+CFLAGS = -fomit-frame-pointer -march=native -Wall -pipe
+CFLAGS_DEBUG = -march=native -g -Wall -pipe
 CC = gcc
-CFLAGS = $(COMPILERFLAGS) $(INCLUDE)
-LIBRARIES = -lglut -lGL -lGLU -lX11 -lXext -lXmu -lXt -lXi -lm
+LIBRARIES = -lglut -lGL -lGLU -lm
 
 All: viewstl 
 
+debug: CFLAGS = $(CFLAGS_DEBUG)
+debug: viewstl
+
 viewstl: viewstl.o
-	$(CC) $(CFLAGS) -o $@ $(LIBDIR) $< $(LIBRARIES)
+	$(CC) $(CFLAGS) -o $@ $< $(LIBRARIES)
 
 rebuild: clean viewstl
 
