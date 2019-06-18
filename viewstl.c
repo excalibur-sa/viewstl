@@ -85,7 +85,6 @@ float Z_Depth = -5, Big_Extent = 10;
 int verbose = NO;
 
 
-
 /* This function puts all the polygons it finds into the global array poly_list */
 /* it uses the global variable Poly_Count to index this array Poly_Count is used */
 /* elsewhere so it needs to be left alone once this finishes */
@@ -138,8 +137,6 @@ static void CollectPolygons()
     if (verbose)
         printf("\n");
 }
-
-
 
 
 /* This function reads through the array of polygons (poly_list) to find the */
@@ -289,7 +286,6 @@ static void SetView(int Width, int Height)
 }
 
 
-
 /* Frame rate counter.  Based off of the Oreilly OGL demo !  */
 /* updates the global variables FrameCount & FrameRate each time it is called. */
 /* called from the main drawing function */
@@ -308,8 +304,6 @@ static void GetFPS()
         FrameCount = 0;
     }
 }
-
-
 
 
 /* A general OpenGL initialization function. */
@@ -336,11 +330,6 @@ void InitGL(int Width, int Height)	        /* We call this right after our OpenG
 }
 
 
-
-
-
-
-
 /* The function called when our window is resized  */
 void ReSizeGLScene(int Width, int Height)
 {
@@ -357,9 +346,9 @@ void ReSizeGLScene(int Width, int Height)
     update = YES;
 }
 
+
 /* The main drawing function. */
 void DrawGLScene()
-
 {
     if ((!update) && (!idle_draw))
         return;
@@ -406,6 +395,7 @@ void DrawGLScene()
     }
 }
 
+
 /* The function called whenever a mouse button event occurs */
 void mouseButtonPress(int button, int state, int x, int y)
 {
@@ -416,10 +406,6 @@ void mouseButtonPress(int button, int state, int x, int y)
     MOUSEy = y;
     update = YES;
 }
-
-
-
-
 
 
 /* The function called whenever a mouse motion event occurs */
@@ -454,9 +440,6 @@ void mouseMotionPress(int x, int y)
 }
 
 
-
-
-
 /* The function called whenever a key is pressed. */
 void keyPressed(unsigned char key, int x, int y) 
 {
@@ -477,8 +460,6 @@ void keyPressed(unsigned char key, int x, int y)
         printf("You pressed key--> %i at %i, %i screen location\n", key, x, y);
     update = YES;
 }
-
-
 
 
 /* This function is for the special keys.  */
@@ -567,6 +548,7 @@ void specialkeyPressed (int key, int x, int y)
         printf("Special Key--> %i at %i, %i screen location\n", key, x, y);
     update = YES;
 }
+
 
 int main(int argc, char *argv[]) 
 { 
