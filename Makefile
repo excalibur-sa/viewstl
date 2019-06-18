@@ -1,4 +1,4 @@
-CFLAGS = -fomit-frame-pointer -march=native -Wall -pipe
+CFLAGS = -fomit-frame-pointer -march=native -Wall -pipe -O2
 CFLAGS_DEBUG = -march=native -g -Wall -pipe
 CC = gcc
 LIBRARIES = -lglut -lGL -lGLU -lm
