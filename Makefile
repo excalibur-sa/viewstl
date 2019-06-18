@@ -9,4 +9,9 @@ LIBRARIES = -lglut -lGL -lGLU -lX11 -lXext -lXmu -lXt -lXi -lm
 All: viewstl 
 
 viewstl: viewstl.o
-	$(CC) $(CFLAGS) -o $@ $(LIBDIR) $< $(LIBRARIES) 
+	$(CC) $(CFLAGS) -o $@ $(LIBDIR) $< $(LIBRARIES)
+
+rebuild: clean viewstl
+
+clean:
+	rm -v *.o viewstl
