@@ -598,8 +598,6 @@ int main(int argc, char *argv[])
 
     }
 
-
-
     /* Read through the file to get number of polygons so that we can malloc */
     /* The right amount of ram plus a little :)  */
     while ( !feof(filein) )
@@ -661,29 +659,8 @@ int main(int argc, char *argv[])
     /* the window starts at the upper left corner of the screen */
     glutInitWindowPosition(0, 0);  
 
-    /*strcpy (arg1, "ViewStl 0.35 viewing: ");
-    strcat (arg1, argv[1]);
-
-     getting a warning here about passing arg1 of sprinf incompatable pointer type ?? 
-     WTF ?!? 
-    if (sprintf(arg2, "       %i Polygons using ", poly_count))
-    {
-        strcat (arg1, arg2);
-    }
-    if (sprintf(arg2, "%i Kb    ", mem_size/1024))
-    {
-        strcat (arg1, arg2);
-    }*/
-
     snprintf(window_title, sizeof(window_title), "ViewStl 0.35 viewing: %s - %i polys - %iKB", argv[1], poly_count, mem_size/1024);
 
-    /* save most of the name for use later */
-    //strcpy (window_title, arg1);
-
-    if (sprintf(arg2, "%.2f FPS", FrameRate))
-    {
-        /*strcat (arg1, arg2);*/
-    }
     window = glutCreateWindow(arg1); 
 
     /* Register the event callback functions since we are using GLUT */
