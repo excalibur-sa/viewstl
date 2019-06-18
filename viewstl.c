@@ -50,11 +50,11 @@
 float *poly_list;  /* Pointer to the soon to be list of Polygons */
 char oneline[255];
 float t1, t2, t3;
-char end_stl_solid[10];
-char begin_stl_solid[10];
-char poly_normal[10];
-char poly_vertex[10];
-char poly_end[10];
+char *end_stl_solid = "endsolid";
+char *begin_stl_solid = "solid";
+char *poly_normal = "facet";
+char *poly_vertex = "vertex";
+char *poly_end = "endfacet";
 char arg1[100], arg2[20], arg3[20], window_name[120];
 int poly_count = 0; 
 FILE *filein; /* Filehandle for the STL file to be viewed */
@@ -573,22 +573,8 @@ void specialkeyPressed (int key, int x, int y)
     update = YES;
 }
 
-
-
-
-
-
-
 int main(int argc, char *argv[]) 
 { 
-
-    /* Assignments ---------------------------------------*/
-    strcpy(poly_end, "endfacet");
-    strcpy(end_stl_solid, "endsolid");
-    strcpy(begin_stl_solid, "solid");
-    strcpy(poly_normal, "facet");
-    strcpy(poly_vertex, "vertex");
-    strcpy(poly_end, "endfacet");
 
     /* Begin parsing command args.  Lame, but it works :)  */
     printf("  viewstl: ");
