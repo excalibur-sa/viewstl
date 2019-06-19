@@ -13,12 +13,15 @@
 #include <GL/glu.h>  // GLU support library.
 #include <GL/glut.h> // GLUT support library.
 
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <unistd.h>     /* needed to sleep*/
 #include <stdlib.h>    /* for malloc() and exit() */
 #include <stdio.h>      /* needed for file & screen i/o */
 #include <string.h>    /* for strcpy and relatives */
 #include <time.h>       /* For our FPS */
 #include <math.h>       /* Gotta do some trig */
+#include <errno.h>      /* Error checking */
 
 /* ASCII code for the various keys used */
 #define ESCAPE 27     /* esc */
@@ -550,12 +553,12 @@ void specialkeyPressed (int key, int x, int y)
 }
 
 void usage(int e) {
-    printf("This is how you invoke the viewer... \n");
-    printf("           Usage:  viewstl [file] (-o or -p) (-f or -v)\n");
-    printf("           Valid Options are: -o (Ortho View EXPEREMENTAL)\n");
-    printf("                              -p (Perspective View)\n");
-    printf("                              -f (Redraw only on view change)\n");
-    printf("                              -v (Report debug info to STDOUT)\n");
+    printf("Usage: viewstl [OPTIONS]... [FILE]\n");
+    printf("View stereolithographic (.stl) 3D models.\n\n");
+    printf("  -o (Ortho View EXPEREMENTAL)\n");
+    printf("  -p (Perspective View [default])\n");
+    printf("  -f (Redraw only on view change)\n");
+    printf("  -v (Report debug info to STDOUT)\n");
     if (e)
        exit(1);
 }
@@ -563,13 +566,11 @@ void usage(int e) {
 int main(int argc, char *argv[]) 
 {
     for (int i = 1; i < argc; i++) {
-        printf("arg: %s\n", argv[i]);
         if (strcmp(argv[i], "-o") == 0) {
-            printf("Running in Ortho View.\n");
             ViewFlag = ORTHO;
         }
         else if (strcmp(argv[i], "-p") == 0) {
-            printf("Running in Perspective View.\n");
+            ViewFlag = PERSPECTIVE;
         }
 
         if (strcmp(argv[i], "-f") == 0)
@@ -584,11 +585,26 @@ int main(int argc, char *argv[])
         }
 
         if (filein == NULL) {
-            filein = fopen(argv[i], "r");
-            if (filein == 0)
+            filein = fopen(argv[i], "r"); // FIXME: opens up dirs as well.
+            if (filein == NULL) {
+                int e = errno;
+                printf("%s: %s: %s\n\n", argv[0], argv[i], strerror(e));
                 usage(1);
+            }
+            struct stat path_stat;
+            fstat(fileno(filein), &path_stat);
+            if (S_ISDIR(path_stat.st_mode)) {
+                fclose(filein);
+                printf("%s: %s: %s\n\n", argv[0], argv[i], strerror(EISDIR));
+                usage(1);
+            }
         }
+    }
 
+    if (ViewFlag == ORTHO) {
+        printf("Running in orthographic mode.\nNote: This mode is highly experimental.\n");
+    } else if (ViewFlag == PERSPECTIVE) {
+        printf("Running in perspective mode.\n");
     }
 
     /* Read through the file to get number of polygons so that we can malloc */
