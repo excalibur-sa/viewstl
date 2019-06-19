@@ -549,52 +549,45 @@ void specialkeyPressed (int key, int x, int y)
     update = YES;
 }
 
+void usage(int e) {
+    printf("This is how you invoke the viewer... \n");
+    printf("           Usage:  viewstl [file] (-o or -p) (-f or -v)\n");
+    printf("           Valid Options are: -o (Ortho View EXPEREMENTAL)\n");
+    printf("                              -p (Perspective View)\n");
+    printf("                              -f (Redraw only on view change)\n");
+    printf("                              -v (Report debug info to STDOUT)\n");
+    if (e)
+       exit(1);
+}
 
 int main(int argc, char *argv[]) 
-{ 
-
-    /* Begin parsing command args.  Lame, but it works :)  */
-    printf("  viewstl: ");
-    filein = fopen(argv[1], "r");
-    if (filein == 0)
-    {
-        printf("This is how you invoke the viewer... \n");
-        printf("           Usage:  viewstl [file] (-o or -p) (-f or -v)\n");
-        printf("           Valid Options are: -o (Ortho View EXPEREMENTAL)\n");
-        printf("                              -p (Perspective View)\n");
-        printf("                              -f (Redraw only on view change)\n");
-        printf("                              -v (Report debug info to STDOUT)\n");
-        exit(1);
-    }
-
-    if (argc > 2)
-    {
-        strcpy(arg1, "-o");
-        if (strcmp(argv[2], arg1) == 0)
-        {
-            printf("Running in Ortho View\n");
+{
+    for (int i = 1; i < argc; i++) {
+        printf("arg: %s\n", argv[i]);
+        if (strcmp(argv[i], "-o") == 0) {
+            printf("Running in Ortho View.\n");
             ViewFlag = ORTHO;
         }
-    }
-    if (ViewFlag == PERSPECTIVE)
-    {
-        printf("Running in Perspective View\n");
-    }
-    if (argc == 4)
-    {
-        strcpy(arg1, "-f");
-        if (strcmp(argv[3], arg1) == 0)
+        else if (strcmp(argv[i], "-p") == 0) {
+            printf("Running in Perspective View.\n");
+        }
+
+        if (strcmp(argv[i], "-f") == 0)
         {
             printf("           Redrawing only on view change\n");
             idle_draw = NO;
         }
-        strcpy(arg1, "-v");
-        if (strcmp(argv[3], arg1) == 0)
+        if (strcmp(argv[i], "-v") == 0)
         {
             printf("           Debug Output Enabled\n");
             verbose = YES;
         }
 
+        if (filein == NULL) {
+            filein = fopen(argv[i], "r");
+            if (filein == 0)
+                usage(1);
+        }
 
     }
 
