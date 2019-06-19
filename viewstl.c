@@ -585,7 +585,7 @@ int main(int argc, char *argv[])
         }
 
         if (filein == NULL) {
-            filein = fopen(argv[i], "r"); // FIXME: opens up dirs as well.
+            filein = fopen(argv[i], "r");
             if (filein == NULL) {
                 int e = errno;
                 printf("%s: %s: %s\n\n", argv[0], argv[i], strerror(e));
