@@ -494,58 +494,35 @@ void specialkeyPressed (int key, int x, int y)
 
     }
 
-    /* Pan is assigned the F1 key */
-    if (key == 1)
-    {
-        PANx = PANx + ((MOUSEx - x)*(tanf(0.26179939)*(Z_Depth+scale)))*.005;
-        PANy = PANy - ((MOUSEy - y)*(tanf(0.26179939)*(Z_Depth+scale)))*.005;
-        MOUSEx = x;
-        MOUSEy = y;
-    } 
-
-    /* Zoom or Scale is the F2 key */
-    if (key == 2)
-    {
-        scale = scale + ((MOUSEy - y)*(tanf(0.26179939)*(Z_Depth+scale)))*.01;
-        oScale = oScale + ((MOUSEy - y)*(tanf(0.26179939)*(Z_Depth+scale)))*.01;
-        /* scale = scale - ((MOUSEy - y)*0.05);
-           oScale = oScale - ((MOUSEy - y)*0.05);  */
-        MOUSEx = x;
-        MOUSEy = y;
-    } 
-
-    /* Rotate assigned the F3 key */
-
-    if (key == 3)
-    {
-        ROTy = ROTy - ((MOUSEx - x)*0.5);
-        ROTx = ROTx - ((MOUSEy - y)*0.5);
-        MOUSEx = x;
-        MOUSEy = y;
-    } 
-
-    /* Cool Display Stuff... */
-    if (key == 4)
-    {
-        glPolygonMode(GL_FRONT, GL_FILL);
-    }
-    if (key == 5)
-    {
-        glPolygonMode(GL_FRONT, GL_LINE);
-        glPolygonMode(GL_BACK, GL_FILL);
-    }
-    if (key == 6)
-    {
-        glPolygonMode(GL_FRONT, GL_LINE);
-        glPolygonMode(GL_BACK, GL_POINT);
-    }
-    if (key == 7)
-    {
-        glDisable(GL_CULL_FACE);
-    }
-    if (key == 8)
-    {
-        glEnable(GL_CULL_FACE);
+    switch(key) {
+        case 1: /* Pan is assigned the F1 key */
+            PANx = PANx + ((MOUSEx - x)*(tanf(0.26179939)*(Z_Depth+scale)))*.005;
+            PANy = PANy - ((MOUSEy - y)*(tanf(0.26179939)*(Z_Depth+scale)))*.005;
+            MOUSEx = x; MOUSEy = y; break;
+        case 2: /* Zoom or Scale is the F2 key */
+            scale = scale + ((MOUSEy - y)*(tanf(0.26179939)*(Z_Depth+scale)))*.01;
+            oScale = oScale + ((MOUSEy - y)*(tanf(0.26179939)*(Z_Depth+scale)))*.01;
+            /* scale = scale - ((MOUSEy - y)*0.05);
+               oScale = oScale - ((MOUSEy - y)*0.05);  */
+            MOUSEx = x; MOUSEy = y; break;
+        case 3: /* Rotate assigned the F3 key */
+            ROTy = ROTy - ((MOUSEx - x)*0.5);
+            ROTx = ROTx - ((MOUSEy - y)*0.5);
+            MOUSEx = x; MOUSEy = y; break;
+        case 4: /* Cool Display Stuff... */
+            glPolygonMode(GL_FRONT, GL_FILL); break;
+        case 5:
+            glPolygonMode(GL_FRONT, GL_LINE);
+            glPolygonMode(GL_BACK, GL_FILL); break;
+        case 6:
+            glPolygonMode(GL_FRONT, GL_LINE);
+            glPolygonMode(GL_BACK, GL_POINT); break;
+        case 7:
+            glDisable(GL_CULL_FACE); break;
+        case 8:
+            glEnable(GL_CULL_FACE); break;
+        default:
+            break;
     }
     if (verbose)   
         printf("Special Key--> %i at %i, %i screen location\n", key, x, y);
