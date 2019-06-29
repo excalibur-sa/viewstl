@@ -22,6 +22,7 @@
 #include <time.h>       /* For our FPS */
 #include <math.h>       /* Gotta do some trig */
 #include <errno.h>      /* Error checking */
+#include <libgen.h>     /* basename() */
 
 /* ASCII code for the various keys used */
 #define ESCAPE 27     /* esc */
@@ -576,6 +577,11 @@ int main(int argc, char *argv[])
                 usage(1);
             }
         }
+    }
+
+    if (!filein) {
+        printf("%s: No file was specified.\n", basename(argv[0]));
+        usage(1);
     }
 
     if (ViewFlag == ORTHO) {
