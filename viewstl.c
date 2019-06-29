@@ -554,7 +554,7 @@ int main(int argc, char *argv[])
         }
 
         if (filein == NULL) {
-            filein = fopen(argv[i], "r");
+            filein = fopen(argv[i], "rb");
             if (filein == NULL) {
                 int e = errno;
                 printf("%s: %s: %s\n\n", argv[0], argv[i], strerror(e));
@@ -573,6 +573,16 @@ int main(int argc, char *argv[])
     if (!filein) {
         printf("%s: No file was specified.\n", basename(argv[0]));
         usage(1);
+    }
+
+    if (!feof(filein)) {
+        char buf[80];
+        fread(buf, 1, sizeof(buf), filein);
+        if (strncmp(buf, "solid", 5) != 0) {
+            printf("Binary STL files are currently unsupported.\n");
+            exit(1);
+        }
+        rewind(filein);
     }
 
     if (ViewFlag == ORTHO) {
