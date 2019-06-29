@@ -576,9 +576,10 @@ int main(int argc, char *argv[])
     }
 
     if (!feof(filein)) {
-        char buf[80];
+        char buf[80]; char *chk_p;
         fread(buf, 1, sizeof(buf), filein);
-        if (strncmp(buf, "solid", 5) != 0) {
+        chk_p = strstr(buf, "solid");
+        if (!chk_p) {
             printf("Binary STL files are currently unsupported.\n");
             exit(1);
         }
