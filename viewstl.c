@@ -604,7 +604,7 @@ int main(int argc, char *argv[])
     /* Back to top of file so that we can get the data into our array poly_list*/
     rewind(filein);
     if (verbose)
-        printf("           Poly Count = %i\n", poly_count);
+        printf("\tPoly Count = %i\n", poly_count);
 
     /* Ask our friendly OS to give us a place to put the polygons for a while */
     /* This does not work on win32.  Seems it does not know how to deal with */
@@ -613,8 +613,8 @@ int main(int argc, char *argv[])
     mem_size = sizeof(float[(poly_count+1)*12]);
     if (verbose)
     {
-        printf("           %i bytes allocated!\n", mem_size);
-        printf("           Reading");
+        printf("\t%i bytes allocated!\n", mem_size);
+        printf("\tReading");
     }
     /* reset the poly counter so that it is also an index for the data */
     poly_count = 0;
@@ -626,9 +626,9 @@ int main(int argc, char *argv[])
     /* Print the result of the extent calc */
     if (verbose)
     {
-        printf("           Part extents are: x, y, z\n");
-        printf("           %f, %f, %f\n", extent_pos_x, extent_pos_y, extent_pos_z);
-        printf("           %f, %f, %f\n", extent_neg_x, extent_neg_y, extent_neg_z);
+        printf("\tPart extents are: x, y, z\n");
+        printf("\t%f, %f, %f\n", extent_pos_x, extent_pos_y, extent_pos_z);
+        printf("\t%f, %f, %f\n", extent_neg_x, extent_neg_y, extent_neg_z);
     }
 
     TransformToOrigin();
