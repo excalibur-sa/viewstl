@@ -130,11 +130,8 @@ static void CollectPolygons()
         if (strcasecmp(arg1, poly_end) == 0)
         {
             poly_count = poly_count + 1;
-            if ((poly_count % 500) == 0)
-            {
-                if (verbose)
-                    printf(".");
-            }
+            if ((poly_count % 500) == 0 && verbose)
+                printf(".");
         }
     }
     if (verbose)
@@ -483,7 +480,6 @@ void specialkeyPressed (int key, int x, int y)
     {
         MOUSEx = x;
         MOUSEy = y;
-
     }
 
     switch(key) {
@@ -535,23 +531,16 @@ void usage(int e) {
 int main(int argc, char *argv[]) 
 {
     for (int i = 1; i < argc; i++) {
-        if (strcmp(argv[i], "-o") == 0) {
+        if (strcmp(argv[i], "-o") == 0)
             ViewFlag = ORTHO;
-        }
-        else if (strcmp(argv[i], "-p") == 0) {
+        else if (strcmp(argv[i], "-p") == 0)
             ViewFlag = PERSPECTIVE;
-        }
 
         if (strcmp(argv[i], "-f") == 0)
-        {
-            printf("           Redrawing only on view change\n");
             idle_draw = NO;
-        }
+
         if (strcmp(argv[i], "-v") == 0)
-        {
-            printf("           Debug Output Enabled\n");
             verbose = YES;
-        }
 
         if (filein == NULL) {
             filein = fopen(argv[i], "rb");
@@ -586,12 +575,6 @@ int main(int argc, char *argv[])
         rewind(filein);
     }
 
-    if (ViewFlag == ORTHO) {
-        printf("Running in orthographic mode.\nNote: This mode is highly experimental.\n");
-    } else if (ViewFlag == PERSPECTIVE) {
-        printf("Running in perspective mode.\n");
-    }
-
     /* Read through the file to get number of polygons so that we can malloc */
     /* The right amount of ram plus a little :)  */
     while ( !feof(filein) )
@@ -604,8 +587,6 @@ int main(int argc, char *argv[])
 
     /* Back to top of file so that we can get the data into our array poly_list*/
     rewind(filein);
-    if (verbose)
-        printf("\tPoly Count = %i\n", poly_count);
 
     /* Ask our friendly OS to give us a place to put the polygons for a while */
     /* This does not work on win32.  Seems it does not know how to deal with */
@@ -614,28 +595,36 @@ int main(int argc, char *argv[])
     mem_size = sizeof(float[(poly_count+1)*12]);
     if (verbose)
     {
-        printf("\t%i bytes allocated!\n", mem_size);
-        printf("\tReading");
+        printf("Debug Output Enabled\n");
+        printf("%i bytes allocated!\n", mem_size);
+        printf("Reading");
     }
     /* reset the poly counter so that it is also an index for the data */
+    int old_poly_count = 0;
+    old_poly_count = poly_count;
     poly_count = 0;
 
     CollectPolygons();
 
     FindExtents();
 
-    /* Print the result of the extent calc */
-    if (verbose)
-    {
-        printf("\tPart extents are: x, y, z\n");
+    TransformToOrigin();
+
+    if (verbose) {
+        printf("File Processed\n");
+        printf("Poly Count = %i\n", old_poly_count);
+        printf("Part extents are: x, y, z\n");
         printf("\t%f, %f, %f\n", extent_pos_x, extent_pos_y, extent_pos_z);
         printf("\t%f, %f, %f\n", extent_neg_x, extent_neg_y, extent_neg_z);
     }
 
-    TransformToOrigin();
+    if (ViewFlag == ORTHO)
+        printf("Running in orthographic mode.\nNote: This mode is highly experimental.\n");
+    else if (ViewFlag == PERSPECTIVE)
+        printf("Running in perspective mode.\n");
 
-    if (verbose)
-        printf("           File Processed\n");
+    if (!idle_draw)
+        printf("Automatic redraw disabled.");
 
     /* Initialize GLUT state - glut will take any command line arguments that pertain to it or 
        X Windows - look at its documentation at http://reality.sgi.com/mjk/spec3/spec3.html */  
