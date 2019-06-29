@@ -61,7 +61,6 @@ char *poly_vertex = "vertex";
 char *poly_end = "endfacet";
 char arg1[100];
 char arg2[50];
-char arg3[20];
 char window_title[256];
 int poly_count = 0; 
 FILE *filein; /* Filehandle for the STL file to be viewed */
@@ -274,18 +273,10 @@ static void SetView(int Width, int Height)
     if (verbose)
         printf("Window Aspect is: %f\n", aspect);
 
-
     if (ViewFlag == PERSPECTIVE)
-    {
-        /* Calculate The Aspect Ratio Of The Window*/
         gluPerspective(FOV,(GLfloat)Width/(GLfloat)Height,0.1f,(Z_Depth + Big_Extent));
-    }
-
-    if (ViewFlag == ORTHO)
-    {
-        /* glOrtho(left, right, bottom, top, near, far) */
+    else if (ViewFlag == ORTHO)
         glOrtho((extent_neg_x*1.2f), (extent_pos_x*1.2f), (extent_neg_y*aspect), (extent_pos_y*aspect), -1.0f, 10.0f);
-    }
 
 }
 
