@@ -1,8 +1,21 @@
-/*      ViewStl By Doug Dingus  Licensed Under GPL   */
+/*
+ * ViewStl 1.0
+ *      Copyright (C) 2004 Doug Dingus (ViewStl 0.35)
+ *      Copyright (C) 2019 Andrew Hall (ViewStl 1.0 and later)
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as published by
+ * the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
 
-/* fix crash when invoked from really long command line (long file path) */
-/* this probably has to do with the display of the filename in the window title */
-/* probably need to allocate more string space for long args (Mostly Fixed)*/
 
 /* Basic Includes for OGL, GLUT, and other */
 /* WIN32 needs some additional ones  */
