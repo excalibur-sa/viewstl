@@ -1,7 +1,7 @@
 /*
  * ViewStl 1.0
  *      Copyright (C) 2004 Doug Dingus (ViewStl 0.35)
- *      Copyright (C) 2019 Andrew Hall (ViewStl 1.0 and later)
+ *      Copyright (C) 2019 Andrew Hall (ViewStl 1.0 Modifications and later)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as published by
