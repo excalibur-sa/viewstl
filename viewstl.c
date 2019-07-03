@@ -110,8 +110,8 @@ typedef  struct stl_tri_struct {
 } STL_triangle;
 
 typedef struct stl_extents_struct {
-    float x_max = 0, y_max = 0, z_max = 0;
-    float x_min = 0, y_min = 0, z_min = 0;
+    float x_max; float y_max; float z_max;
+    float x_min; float y_min; float z_min;
 } STL_extents;
 
 typedef struct stl_struct {
