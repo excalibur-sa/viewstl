@@ -32,6 +32,7 @@
 #include <stdlib.h>    /* for malloc() and exit() */
 #include <stdio.h>      /* needed for file & screen i/o */
 #include <string.h>    /* for strcpy and relatives */
+#include <stdint.h>    /*uintn_t and intn_t*/
 #include <time.h>       /* For our FPS */
 #include <math.h>       /* Gotta do some trig */
 #include <errno.h>      /* Error checking */
@@ -100,6 +101,26 @@ int update = YES, idle_draw = YES;
 float Z_Depth = -5, Big_Extent = 10;
 int verbose = NO;
 
+typedef  struct stl_tri_struct {
+    float normal[3];
+    float vertex_a[3];
+    float vertex_b[3];
+    float vertex_c[3];
+    uint16_t attr;
+} STL_triangle;
+
+typedef struct stl_extents_struct {
+    float x_max = 0, y_max = 0, z_max = 0;
+    float x_min = 0, y_min = 0, z_min = 0;
+} STL_extents;
+
+typedef struct stl_struct {
+    uint8_t header[80];
+    uint32_t tris_size;
+
+    STL_triangle* tris;
+    STL_extents extents;
+} STL_data;
 
 /* This function puts all the polygons it finds into the global array poly_list */
 /* it uses the global variable Poly_Count to index this array Poly_Count is used */
