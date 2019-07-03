@@ -14,3 +14,4 @@ If for whatever silly reason you're on Windows or IRIX in $CURRENT_YEAR you can 
 * Add support for OpenGL3 rendering.
 * Add support for automatically detecting and displaying changes to the currently viewed STL file.
 * Possibly a name change with support for more formats.
+* Support for binary STL files.
