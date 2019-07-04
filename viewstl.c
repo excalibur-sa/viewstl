@@ -172,7 +172,53 @@ static void CollectPolygons()
         printf("\n");
 }
 
+static void CollectPolygons_new(FILE *f, STL_data *stl)
+{
+    char poly_buf[256];
+    char poly_section[64];
 
+    for (int poly_idx = 0; poly_idx < stl->tris_size && !feof(f); poly_idx++)
+    {
+        fgets(poly_buf, 255, f);
+        sscanf(poly_buf, "%s", poly_section);
+        if (strcasecmp(poly_section, poly_normal) == 0)  /* Is this a normal ?? */
+        {
+            sscanf(poly_buf, "%*s %*s %f %f %f",
+                    &(stl->tris[poly_idx]).normal[0],
+                    &(stl->tris[poly_idx]).normal[1],
+                    &(stl->tris[poly_idx]).normal[2]
+            );
+        }
+
+        if (strcasecmp(poly_section, poly_vertex) == 0)  /* Is it a vertex ?  */
+        {
+            sscanf(poly_buf, "%*s %f %f %f",
+                    &(stl->tris[poly_idx]).vertex_a[0],
+                    &(stl->tris[poly_idx]).vertex_a[1],
+                    &(stl->tris[poly_idx]).vertex_a[2]
+            );
+
+            fgets(poly_buf, 255, f);  /* Next two lines vertices also!  */
+            sscanf(poly_buf, "%*s %f %f %f",
+                    &(stl->tris[poly_idx]).vertex_b[0],
+                    &(stl->tris[poly_idx]).vertex_b[1],
+                    &(stl->tris[poly_idx]).vertex_b[2]
+            );
+
+            fgets(poly_buf, 255, f);
+            sscanf(poly_buf, "%*s %f %f %f",
+                    &(stl->tris[poly_idx]).vertex_c[0],
+                    &(stl->tris[poly_idx]).vertex_c[1],
+                    &(stl->tris[poly_idx]).vertex_c[2]
+            );
+        }
+
+        if (strcasecmp(poly_section, poly_end) == 0 && (poly_idx % 500) == 0 && verbose)
+            printf(".");
+    }
+    if (verbose)
+        printf("\n");
+}
 /* This function reads through the array of polygons (poly_list) to find the */
 /* largest and smallest vertices in the model.  This data will be used by the */
 /* transform_model function to center the part at the origin for rotation */
@@ -633,12 +679,19 @@ int main(int argc, char *argv[])
         printf("%i bytes allocated!\n", mem_size);
         printf("Reading");
     }
+
+    STL_data *s = malloc(sizeof(STL_data));
+    s->tris_size = poly_count;
+    s->tris = calloc(s->tris_size, sizeof(STL_triangle));
+
     /* reset the poly counter so that it is also an index for the data */
     int old_poly_count = 0;
     old_poly_count = poly_count;
     poly_count = 0;
 
     CollectPolygons();
+    rewind(filein);
+    CollectPolygons_new(filein, s);
 
     FindExtents();
 
