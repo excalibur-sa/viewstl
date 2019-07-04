@@ -682,7 +682,7 @@ int main(int argc, char *argv[])
 
     STL_data *s = malloc(sizeof(STL_data));
     s->tris_size = poly_count;
-    s->tris = calloc(s->tris_size, sizeof(STL_triangle));
+    s->tris = malloc(s->tris_size * sizeof(STL_triangle));
 
     /* reset the poly counter so that it is also an index for the data */
     int old_poly_count = 0;
