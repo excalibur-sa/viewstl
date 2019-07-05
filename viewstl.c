@@ -276,6 +276,44 @@ static void FindExtents()
     }
 }
 
+static void FindExtents_new(STL_data *stl)
+{
+    for (int poly_idx = 0; poly_idx < stl->tris_size; poly_idx++)
+    {
+        STL_extents *extents = &(stl->extents);
+        float *vertex_a = stl->tris[poly_idx].vertex_a;
+        float *vertex_b = stl->tris[poly_idx].vertex_b;
+        float *vertex_c = stl->tris[poly_idx].vertex_c;
+
+        /* Positive Extents */
+
+        extents->x_max = (vertex_a[0] > extents->x_max) ? vertex_a[0] : extents->x_max;
+        extents->y_max = (vertex_a[1] > extents->y_max) ? vertex_a[1] : extents->y_max;
+        extents->z_max = (vertex_a[2] > extents->z_max) ? vertex_a[2] : extents->z_max;
+
+        extents->x_max = (vertex_b[0] > extents->x_max) ? vertex_b[0] : extents->x_max;
+        extents->y_max = (vertex_b[1] > extents->y_max) ? vertex_b[1] : extents->y_max;
+        extents->z_max = (vertex_b[2] > extents->z_max) ? vertex_b[2] : extents->z_max;
+
+        extents->x_max = (vertex_c[0] > extents->x_max) ? vertex_c[0] : extents->x_max;
+        extents->y_max = (vertex_c[1] > extents->y_max) ? vertex_c[1] : extents->y_max;
+        extents->z_max = (vertex_c[2] > extents->z_max) ? vertex_c[2] : extents->z_max;
+
+        /* Negative Extents */
+
+        extents->x_min = (vertex_a[0] < extents->x_min) ? vertex_a[0] : extents->x_min;
+        extents->y_min = (vertex_a[1] < extents->y_min) ? vertex_a[1] : extents->y_min;
+        extents->z_min = (vertex_a[2] < extents->z_min) ? vertex_a[2] : extents->z_min;
+
+        extents->x_min = (vertex_b[0] < extents->x_min) ? vertex_b[0] : extents->x_min;
+        extents->y_min = (vertex_b[1] < extents->y_min) ? vertex_b[1] : extents->y_min;
+        extents->z_min = (vertex_b[2] < extents->z_min) ? vertex_b[2] : extents->z_min;
+
+        extents->x_min = (vertex_c[0] < extents->x_min) ? vertex_c[0] : extents->x_min;
+        extents->y_min = (vertex_c[1] < extents->y_min) ? vertex_c[1] : extents->y_min;
+        extents->z_min = (vertex_c[2] < extents->z_min) ? vertex_c[2] : extents->z_min;
+    }
+}
 
 /* This translates the center of the rectangular bounding box surrounding */
 /* the model to the origin.  Makes for good rotation.  Also it does a quick */
@@ -694,6 +732,7 @@ int main(int argc, char *argv[])
     CollectPolygons_new(filein, s);
 
     FindExtents();
+    FindExtents_new(s);
 
     TransformToOrigin();
 
