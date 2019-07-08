@@ -176,8 +176,9 @@ static void CollectPolygons_new(FILE *f, STL_data *stl)
 {
     char poly_buf[256];
     char poly_section[64];
+    int poly_idx = 0;
 
-    for (int poly_idx = 0; poly_idx < stl->tris_size && !feof(f); poly_idx++)
+    while (poly_idx < stl->tris_size && !feof(f))
     {
         fgets(poly_buf, 255, f);
         sscanf(poly_buf, "%s", poly_section);
@@ -211,6 +212,8 @@ static void CollectPolygons_new(FILE *f, STL_data *stl)
                     &(stl->tris[poly_idx]).vertex_c[1],
                     &(stl->tris[poly_idx]).vertex_c[2]
             );
+
+            poly_idx++;
         }
 
         if (strcasecmp(poly_section, poly_end) == 0 && (poly_idx % 500) == 0 && verbose)
@@ -278,9 +281,9 @@ static void FindExtents()
 
 static void FindExtents_new(STL_data *stl)
 {
+    STL_extents *extents = &(stl->extents);
     for (int poly_idx = 0; poly_idx < stl->tris_size; poly_idx++)
     {
-        STL_extents *extents = &(stl->extents);
         float *vertex_a = stl->tris[poly_idx].vertex_a;
         float *vertex_b = stl->tris[poly_idx].vertex_b;
         float *vertex_c = stl->tris[poly_idx].vertex_c;
@@ -731,10 +734,62 @@ int main(int argc, char *argv[])
     rewind(filein);
     CollectPolygons_new(filein, s);
 
+//    for (int idx = 0; idx < s->tris_size; idx++) {
+//        printf("Poly %i:\n", idx);
+//        printf("\tOld: [%f, %f, %f] [%f, %f, %f] [%f, %f, %f] [%f, %f, %f]\n",
+//                poly_list[0+(idx * 12)], poly_list[1+(idx * 12)],
+//                poly_list[2+(idx * 12)], poly_list[3+(idx * 12)],
+//                poly_list[4+(idx * 12)], poly_list[5+(idx * 12)],
+//                poly_list[6+(idx * 12)], poly_list[7+(idx * 12)],
+//                poly_list[8+(idx * 12)], poly_list[9+(idx * 12)],
+//                poly_list[10+(idx * 12)], poly_list[11+(idx * 12)]
+//                );
+//        printf("\tNew: [%f, %f, %f] [%f, %f, %f] [%f, %f, %f] [%f, %f, %f]\n",
+//                s->tris[idx].normal[0], s->tris[idx].normal[1], s->tris[idx].normal[2],
+//                s->tris[idx].vertex_a[0], s->tris[idx].vertex_a[1], s->tris[idx].vertex_a[2],
+//                s->tris[idx].vertex_b[0], s->tris[idx].vertex_b[1], s->tris[idx].vertex_b[2],
+//                s->tris[idx].vertex_c[0], s->tris[idx].vertex_c[1], s->tris[idx].vertex_c[2]
+//        );
+//
+//        if (poly_list[0+(idx * 12)] != s->tris[idx].normal[0] && poly_list[1+(idx * 12)] != s->tris[idx].normal[1] && poly_list[2+(idx * 12)] != s->tris[idx].normal[2])
+//        {
+//            printf("Polygon %i normal mismatch.\n", idx);
+//        }
+//
+//        if (poly_list[3+(idx * 12)] != s->tris[idx].vertex_a[0] && poly_list[4+(idx * 12)] != s->tris[idx].vertex_a[1] && poly_list[5+(idx * 12)] != s->tris[idx].vertex_a[2])
+//        {
+//            printf("Polygon %i vertex a mismatch.\n", idx);
+//        }
+//
+//        if (poly_list[6+(idx * 12)] != s->tris[idx].vertex_b[0] && poly_list[7+(idx * 12)] != s->tris[idx].vertex_b[1] && poly_list[8+(idx * 12)] != s->tris[idx].vertex_b[2])
+//        {
+//            printf("Polygon %i vertex b mismatch.\n", idx);
+//        }
+//
+//        if (poly_list[9+(idx * 12)] != s->tris[idx].vertex_c[0] && poly_list[10+(idx * 12)] != s->tris[idx].vertex_c[1] && poly_list[11+(idx * 12)] != s->tris[idx].vertex_c[2])
+//        {
+//            printf("Polygon %i vertex c mismatch.\n", idx);
+//        }
+//    }
+
     FindExtents();
     FindExtents_new(s);
+//    printf("Old Extents: %f/%f %f/%f %f/%f\nNew Extents: %f/%f %f/%f %f/%f\n",
+//           extent_neg_x, extent_pos_x, extent_neg_y,
+//           extent_pos_y, extent_neg_z, extent_pos_z,
+//           s->extents.x_min, s->extents.x_max, s->extents.y_min,
+//           s->extents.y_max, s->extents.z_min, s->extents.z_max
+//    );
 
     TransformToOrigin();
+    FindExtents_new(s);
+
+//    printf("Old Extents: %f/%f %f/%f %f/%f\nNew Extents: %f/%f %f/%f %f/%f\n",
+//           extent_neg_x, extent_pos_x, extent_neg_y,
+//           extent_pos_y, extent_neg_z, extent_pos_z,
+//           s->extents.x_min, s->extents.x_max, s->extents.y_min,
+//           s->extents.y_max, s->extents.z_min, s->extents.z_max
+//    );
 
     if (verbose) {
         printf("File Processed\n");
