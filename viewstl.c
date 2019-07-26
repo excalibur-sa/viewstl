@@ -102,6 +102,15 @@ int update = YES, idle_draw = YES;
 float Z_Depth = -5, Big_Extent = 10;
 int verbose = NO;
 
+typedef struct stl_transform_struct {
+    float pan_x;
+    float pan_y;
+    float rot_x;
+    float rot_y;
+    float scale;
+    float z_depth;
+} STL_transform;
+
 typedef  struct stl_tri_struct {
     float normal[3];
     float vertex_a[3];
@@ -113,6 +122,7 @@ typedef  struct stl_tri_struct {
 typedef struct stl_extents_struct {
     float x_max; float y_max; float z_max;
     float x_min; float y_min; float z_min;
+    float ext_max;
 } STL_extents;
 
 typedef struct stl_struct {
@@ -121,6 +131,7 @@ typedef struct stl_struct {
 
     STL_triangle* tris;
     STL_extents extents;
+    STL_transform transform;
 } STL_data;
 
 STL_data *model;
@@ -422,17 +433,17 @@ static void TransformToOrigin_new(STL_data *stl) {
     LongerSide = (extents->x_max > extents->y_max) ? extents->x_max : extents->y_max;
 
     /* Put the result where the main drawing function can see it */
-    Z_Depth = ((LongerSide / 2) / tanf(ViewAngle));
-    Z_Depth = Z_Depth * -1;
+    stl->transform.z_depth = ((LongerSide / 2) / tanf(ViewAngle));
+    stl->transform.z_depth *= -1;
 
     /* Do another calculation for clip planes */
     /* Take biggest part dimension and use it to size the planes */
     if ((extents->x_max > extents->y_max) && (extents->x_max > extents->z_max))
-        Big_Extent = extents->x_max;
+        extents->ext_max = extents->x_max;
     if ((extents->y_max > extents->x_max) && (extents->y_max > extents->z_max))
-        Big_Extent = extents->y_max;
+        extents->ext_max = extents->y_max;
     if ((extents->z_max > extents->y_max) && (extents->z_max > extents->x_max))
-        Big_Extent = extents->z_max;
+        extents->ext_max = extents->z_max;
 
     /* Then calculate center and put it back to origin */
     for (int poly_idx = 0; poly_idx < stl->tris_size; poly_idx++) {
@@ -464,16 +475,16 @@ static void TransformToOrigin_new(STL_data *stl) {
 
 /* Sets up Projection matrix according to command switch -o or -p */
 /* called from initgl and the window resize function */
-static void SetView(int Width, int Height)
+static void SetView(int Width, int Height, STL_data *stl)
 {
     float aspect = (float)Width / (float)Height;
     if (verbose)
         printf("Window Aspect is: %f\n", aspect);
 
     if (ViewFlag == PERSPECTIVE)
-        gluPerspective(FOV,(GLfloat)Width/(GLfloat)Height,0.1f,(Z_Depth + Big_Extent));
+        gluPerspective(FOV,(GLfloat)Width/(GLfloat)Height,0.1f,(stl->transform.z_depth + stl->extents.ext_max));
     else if (ViewFlag == ORTHO)
-        glOrtho((extent_neg_x*1.2f), (extent_pos_x*1.2f), (extent_neg_y*aspect), (extent_pos_y*aspect), -1.0f, 10.0f);
+        glOrtho((stl->extents.x_min*1.2f), (stl->extents.x_max*1.2f), (stl->extents.y_min*aspect), (stl->extents.y_max*aspect), -1.0f, 10.0f);
 
 }
 
@@ -510,7 +521,7 @@ void InitGL(int Width, int Height)	        /* We call this right after our OpenG
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();				/* Reset The Projection Matrix*/
 
-    SetView(Width, Height);  /* Setup the View Matrix */
+    SetView(Width, Height, model);  /* Setup the View Matrix */
 
     glMatrixMode(GL_MODELVIEW);
     glEnable(GL_LIGHTING);
@@ -532,7 +543,7 @@ void ReSizeGLScene(int Width, int Height)
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
 
-    SetView(Width, Height);
+    SetView(Width, Height, model);
 
     glMatrixMode(GL_MODELVIEW);
     update = YES;
@@ -597,18 +608,18 @@ void DrawGLScene_new()
     if (ViewFlag == PERSPECTIVE)
     {
         glLoadIdentity();
-        glTranslatef(PANx, PANy, (Z_Depth + scale));
-        glRotatef(ROTx, 1.0f, 0.0f, 0.0f);
-        glRotatef(ROTy, 0.0f, 1.0f, 0.0f);
+        glTranslatef(model->transform.pan_x, model->transform.pan_y, (model->transform.z_depth + scale));
+        glRotatef(model->transform.rot_x, 1.0f, 0.0f, 0.0f);
+        glRotatef(model->transform.rot_y, 0.0f, 1.0f, 0.0f);
     }
 
     /* ortho scaling is broken */
     if (ViewFlag == ORTHO)
     {
         glLoadIdentity();
-        glTranslatef(PANx, PANy, -5.0);
-        glRotatef(ROTx, 1.0f, 0.0f, 0.0f);
-        glRotatef(ROTy, 0.0f, 1.0f, 0.0f);
+        glTranslatef(model->transform.pan_x, model->transform.pan_y, -5.0);
+        glRotatef(model->transform.rot_x, 1.0f, 0.0f, 0.0f);
+        glRotatef(model->transform.rot_y, 0.0f, 1.0f, 0.0f);
 
     }
     for(int idx = 0 ; idx < model->tris_size ; idx++)
@@ -853,6 +864,12 @@ int main(int argc, char *argv[])
     model->extents.x_max = 0; model->extents.x_min = 0;
     model->extents.y_max = 0; model->extents.y_min = 0;
     model->extents.z_max = 0; model->extents.z_min = 0;
+    model->transform.pan_x = 0;
+    model->transform.pan_y = 0;
+    model->transform.rot_x = 0;
+    model->transform.rot_y = 0;
+    model->transform.scale = 1;
+    model->transform.z_depth = -5;
     model->tris_size = poly_count;
     model->tris = malloc(model->tris_size * sizeof(STL_triangle));
 
