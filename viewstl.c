@@ -108,6 +108,7 @@ typedef struct stl_transform_struct {
     float rot_x;
     float rot_y;
     float scale;
+    float orth_scale;
     float z_depth;
 } STL_transform;
 
@@ -608,7 +609,7 @@ void DrawGLScene_new()
     if (ViewFlag == PERSPECTIVE)
     {
         glLoadIdentity();
-        glTranslatef(model->transform.pan_x, model->transform.pan_y, (model->transform.z_depth + scale));
+        glTranslatef(model->transform.pan_x, model->transform.pan_y, (model->transform.z_depth + model->transform.scale));
         glRotatef(model->transform.rot_x, 1.0f, 0.0f, 0.0f);
         glRotatef(model->transform.rot_y, 0.0f, 1.0f, 0.0f);
     }
@@ -666,22 +667,28 @@ void mouseMotionPress(int x, int y)
         printf("You did this with the mouse--> %i %i\n", x, y); 
     if (BUTTON == LMB)
     {
-        PANx = PANx + ((MOUSEx - x)*(tanf(0.26179939)*(Z_Depth+scale)))*.005;
-        PANy = PANy - ((MOUSEy - y)*(tanf(0.26179939)*(Z_Depth+scale)))*.005;
+        model->transform.pan_x += ((MOUSEx - x)*(tanf(0.26179939)*(Z_Depth+scale)))*.005;
+        model->transform.pan_y -= ((MOUSEy - y)*(tanf(0.26179939)*(Z_Depth+scale)))*.005;
+//        PANx = PANx + ((MOUSEx - x)*(tanf(0.26179939)*(Z_Depth+scale)))*.005;
+//        PANy = PANy - ((MOUSEy - y)*(tanf(0.26179939)*(Z_Depth+scale)))*.005;
         MOUSEx = x;
         MOUSEy = y;
     } 
     if (BUTTON == MMB)
     {
-        ROTy = ROTy - ((MOUSEx - x)*0.5);
-        ROTx = ROTx - ((MOUSEy - y)*0.5);
+        model->transform.rot_x -= ((MOUSEy - y)*0.5);
+        model->transform.rot_y -= ((MOUSEx - x)*0.5);
+//        ROTy = ROTy - ((MOUSEx - x)*0.5);
+//        ROTx = ROTx - ((MOUSEy - y)*0.5);
         MOUSEx = x;
         MOUSEy = y;
     } 
     if (BUTTON == RMB)
     {
-        scale = scale + ((MOUSEy - y)*(tanf(0.26179939)*(Z_Depth+scale)))*.01;
-        oScale = oScale + ((MOUSEy - y)*(tanf(0.26179939)*(Z_Depth+scale)))*.01;
+        model->transform.scale += ((MOUSEy - y)*(tanf(0.26179939)*(model->transform.z_depth+scale)))*.01;
+        model->transform.orth_scale += ((MOUSEy - y)*(tanf(0.26179939)*(model->transform.z_depth+scale)))*.01;
+//        scale = scale + ((MOUSEy - y)*(tanf(0.26179939)*(Z_Depth+scale)))*.01;
+//        oScale = oScale + ((MOUSEy - y)*(tanf(0.26179939)*(Z_Depth+scale)))*.01;
         /* scale = scale - ((MOUSEy - y)*0.05);
            oScale = oScale - ((MOUSEy - y)*0.05);  */
         MOUSEx = x;
