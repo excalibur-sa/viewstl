@@ -282,6 +282,7 @@ static void FindExtents()
 static void FindExtents_new(STL_data *stl)
 {
     STL_extents *extents = &(stl->extents);
+
     for (int poly_idx = 0; poly_idx < stl->tris_size; poly_idx++)
     {
         float *vertex_a = stl->tris[poly_idx].vertex_a;
@@ -382,6 +383,81 @@ static void TransformToOrigin()
 
 }
 
+static void TransformToOrigin_new(STL_data *stl) {
+    float LongerSide, ViewAngle;
+    STL_extents *extents = &(stl->extents);
+
+    /* first transform into positive quadrant */
+    for (int poly_idx = 0; poly_idx < stl->tris_size; poly_idx++) {
+        //poly_list[3 + (x * 12)] = poly_list[3 + (x * 12)] + (0 - extent_neg_x);
+        stl->tris[poly_idx].vertex_a[0] += (0 - extents->x_min);
+        //poly_list[4 + (x * 12)] = poly_list[4 + (x * 12)] + (0 - extent_neg_y);
+        stl->tris[poly_idx].vertex_a[1] += (0 - extents->y_min);
+        //poly_list[5 + (x * 12)] = poly_list[5 + (x * 12)] + (0 - extent_neg_z);
+        stl->tris[poly_idx].vertex_a[2] += (0 - extents->z_min);
+
+//        poly_list[6 + (x * 12)] = poly_list[6 + (x * 12)] + (0 - extent_neg_x);
+//        poly_list[7 + (x * 12)] = poly_list[7 + (x * 12)] + (0 - extent_neg_y);
+//        poly_list[8 + (x * 12)] = poly_list[8 + (x * 12)] + (0 - extent_neg_z);
+
+        stl->tris[poly_idx].vertex_b[0] += (0 - extents->x_min);
+        stl->tris[poly_idx].vertex_b[1] += (0 - extents->y_min);
+        stl->tris[poly_idx].vertex_b[2] += (0 - extents->z_min);
+
+//        poly_list[9 + (x * 12)] = poly_list[9 + (x * 12)] + (0 - extent_neg_x);
+//        poly_list[10 + (x * 12)] = poly_list[10 + (x * 12)] + (0 - extent_neg_y);
+//        poly_list[11 + (x * 12)] = poly_list[11 + (x * 12)] + (0 - extent_neg_z);
+
+        stl->tris[poly_idx].vertex_c[0] += (0 - extents->x_min);
+        stl->tris[poly_idx].vertex_c[1] += (0 - extents->y_min);
+        stl->tris[poly_idx].vertex_c[2] += (0 - extents->z_min);
+    }
+    FindExtents_new(stl);
+    /* Do quick Z_Depth calculation while part resides in ++ quadrant */
+    /* Convert Field of view to radians */
+    ViewAngle = ((FOV / 2) * (PI / 180));
+    LongerSide = (extents->x_max > extents->y_max) ? extents->x_max : extents->y_max;
+
+    /* Put the result where the main drawing function can see it */
+    Z_Depth = ((LongerSide / 2) / tanf(ViewAngle));
+    Z_Depth = Z_Depth * -1;
+
+    /* Do another calculation for clip planes */
+    /* Take biggest part dimension and use it to size the planes */
+    if ((extents->x_max > extents->y_max) && (extents->x_max > extents->z_max))
+        Big_Extent = extents->x_max;
+    if ((extents->y_max > extents->x_max) && (extents->y_max > extents->z_max))
+        Big_Extent = extents->y_max;
+    if ((extents->z_max > extents->y_max) && (extents->z_max > extents->x_max))
+        Big_Extent = extents->z_max;
+
+    /* Then calculate center and put it back to origin */
+    for (int poly_idx = 0; poly_idx < stl->tris_size; poly_idx++) {
+//        poly_list[3 + (x * 12)] = poly_list[3 + (x * 12)] - (extent_pos_x / 2);
+//        poly_list[4 + (x * 12)] = poly_list[4 + (x * 12)] - (extent_pos_y / 2);
+//        poly_list[5 + (x * 12)] = poly_list[5 + (x * 12)] - (extent_pos_z / 2);
+
+        stl->tris[poly_idx].vertex_a[0] -= (extents->x_max / 2);
+        stl->tris[poly_idx].vertex_a[1] -= (extents->y_max / 2);
+        stl->tris[poly_idx].vertex_a[2] -= (extents->z_max / 2);
+
+//        poly_list[6 + (x * 12)] = poly_list[6 + (x * 12)] - (extent_pos_x / 2);
+//        poly_list[7 + (x * 12)] = poly_list[7 + (x * 12)] - (extent_pos_y / 2);
+//        poly_list[8 + (x * 12)] = poly_list[8 + (x * 12)] - (extent_pos_z / 2);
+
+        stl->tris[poly_idx].vertex_b[0] -= (extents->x_max / 2);
+        stl->tris[poly_idx].vertex_b[1] -= (extents->y_max / 2);
+        stl->tris[poly_idx].vertex_b[2] -= (extents->z_max / 2);
+
+//        poly_list[9 + (x * 12)] = poly_list[9 + (x * 12)] - (extent_pos_x / 2);
+//        poly_list[10 + (x * 12)] = poly_list[10 + (x * 12)] - (extent_pos_y / 2);
+//        poly_list[11 + (x * 12)] = poly_list[11 + (x * 12)] - (extent_pos_z / 2);
+
+        stl->tris[poly_idx].vertex_c[0] -= (extents->x_max / 2);
+        stl->tris[poly_idx].vertex_c[1] -= (extents->y_max / 2);
+        stl->tris[poly_idx].vertex_c[2] -= (extents->z_max / 2);
+    }
+}
 
 /* Sets up Projection matrix according to command switch -o or -p */
 /* called from initgl and the window resize function */
@@ -722,6 +798,9 @@ int main(int argc, char *argv[])
     }
 
     STL_data *s = malloc(sizeof(STL_data));
+    s->extents.x_max = 0; s->extents.x_min = 0;
+    s->extents.y_max = 0; s->extents.y_min = 0;
+    s->extents.z_max = 0; s->extents.z_min = 0;
     s->tris_size = poly_count;
     s->tris = malloc(s->tris_size * sizeof(STL_triangle));
 
@@ -782,8 +861,16 @@ int main(int argc, char *argv[])
 //    );
 
     TransformToOrigin();
-    FindExtents_new(s);
+    TransformToOrigin_new(s);
+//    printf("Old Extents: %f/%f %f/%f %f/%f\nNew Extents: %f/%f %f/%f %f/%f\n",
+//           extent_neg_x, extent_pos_x, extent_neg_y,
+//           extent_pos_y, extent_neg_z, extent_pos_z,
+//           s->extents.x_min, s->extents.x_max, s->extents.y_min,
+//           s->extents.y_max, s->extents.z_min, s->extents.z_max
+//    );
 
+//    FindExtents();
+//    FindExtents_new(s);
 //    printf("Old Extents: %f/%f %f/%f %f/%f\nNew Extents: %f/%f %f/%f %f/%f\n",
 //           extent_neg_x, extent_pos_x, extent_neg_y,
 //           extent_pos_y, extent_neg_z, extent_pos_z,
