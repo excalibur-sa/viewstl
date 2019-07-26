@@ -65,30 +65,19 @@
 
 /* Declarations ------------------------------------- */
 
-float *poly_list;  /* Pointer to the soon to be list of Polygons */
 char oneline[255];
-float t1, t2, t3;
 char *end_stl_solid = "endsolid";
 char *begin_stl_solid = "solid";
 char *poly_normal = "facet";
 char *poly_vertex = "vertex";
 char *poly_end = "endfacet";
 char arg1[100];
-char arg2[50];
 char window_title[256];
-int poly_count = 0; 
 FILE *filein; /* Filehandle for the STL file to be viewed */
 char *filename;
 int window; /* The number of our GLUT window */
-int x;  /* general index */
 int mem_size;
-float scale = 0;
-float ROTx = 0, ROTy = 0;
-float PANx = 0, PANy = 0;
 int MOUSEx = 0, MOUSEy = 0, BUTTON = 0;
-float extent_pos_x = 0, extent_pos_y = 0, extent_pos_z = 0;
-float extent_neg_x = 0, extent_neg_y = 0, extent_neg_z = 0;  
-float rot_center_x, rot_center_y, rot_center_z;
 /* Stuff for the frame rate calculation */
 int FrameCount=0;
 float FrameRate=0;
@@ -97,9 +86,7 @@ float Light_Ambient[]=  { 0.1f, 0.1f, 0.1f, 1.0f };
 float Light_Diffuse[]=  { 1.2f, 1.2f, 1.2f, 1.0f }; 
 float Light_Position[]= { 2.0f, 2.0f, 0.0f, 1.0f };
 int ViewFlag = 0; /* 0=perspective, 1=ortho */
-float oScale = 1.0;
 int update = YES, idle_draw = YES;
-float Z_Depth = -5, Big_Extent = 10;
 int verbose = NO;
 
 typedef struct stl_transform_struct {
@@ -460,8 +447,8 @@ void mouseMotionPress(int x, int y)
         printf("You did this with the mouse--> %i %i\n", x, y); 
     if (BUTTON == LMB)
     {
-        model->transform.pan_x += ((MOUSEx - x)*(tanf(0.26179939)*(model->transform.z_depth+scale)))*.005;
-        model->transform.pan_y -= ((MOUSEy - y)*(tanf(0.26179939)*(model->transform.z_depth+scale)))*.005;
+        model->transform.pan_x += ((MOUSEx - x)*(tanf(0.26179939)*(model->transform.z_depth+model->transform.scale)))*.005;
+        model->transform.pan_y -= ((MOUSEy - y)*(tanf(0.26179939)*(model->transform.z_depth+model->transform.scale)))*.005;
 //        PANx = PANx + ((MOUSEx - x)*(tanf(0.26179939)*(Z_Depth+scale)))*.005;
 //        PANy = PANy - ((MOUSEy - y)*(tanf(0.26179939)*(Z_Depth+scale)))*.005;
         MOUSEx = x;
@@ -635,6 +622,7 @@ int main(int argc, char *argv[])
         rewind(filein);
     }
 
+    int poly_count = 0;
     /* Read through the file to get number of polygons so that we can malloc */
     /* The right amount of ram plus a little :)  */
     while ( !feof(filein) )
@@ -651,7 +639,6 @@ int main(int argc, char *argv[])
     /* Ask our friendly OS to give us a place to put the polygons for a while */
     /* This does not work on win32.  Seems it does not know how to deal with */
     /* the sizeof thing...  Have to just plug in a value (4) damn...  */
-    poly_list = (float*)malloc(sizeof(float[(poly_count+1)*12]));
     mem_size = sizeof(float[(poly_count+1)*12]);
     if (verbose)
     {
@@ -674,9 +661,6 @@ int main(int argc, char *argv[])
     model->tris = malloc(model->tris_size * sizeof(STL_triangle));
 
     /* reset the poly counter so that it is also an index for the data */
-    int old_poly_count = 0;
-    old_poly_count = poly_count;
-    poly_count = 0;
 
     rewind(filein);
     CollectPolygons(filein, model);
