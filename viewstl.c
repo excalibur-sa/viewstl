@@ -78,6 +78,7 @@ char arg2[50];
 char window_title[256];
 int poly_count = 0; 
 FILE *filein; /* Filehandle for the STL file to be viewed */
+char *filename;
 int window; /* The number of our GLUT window */
 int x;  /* general index */
 int mem_size;
@@ -121,6 +122,8 @@ typedef struct stl_struct {
     STL_triangle* tris;
     STL_extents extents;
 } STL_data;
+
+STL_data *model;
 
 /* This function puts all the polygons it finds into the global array poly_list */
 /* it uses the global variable Poly_Count to index this array Poly_Count is used */
@@ -584,6 +587,54 @@ void DrawGLScene()
     }
 }
 
+void DrawGLScene_new()
+{
+    if ((!update) && (!idle_draw))
+        return;
+    update = NO;
+    glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);	/* Clear The Screen And The Depth Buffer*/
+    /* for now use two different methods of scaling depending on ortho or perspective */
+    if (ViewFlag == PERSPECTIVE)
+    {
+        glLoadIdentity();
+        glTranslatef(PANx, PANy, (Z_Depth + scale));
+        glRotatef(ROTx, 1.0f, 0.0f, 0.0f);
+        glRotatef(ROTy, 0.0f, 1.0f, 0.0f);
+    }
+
+    /* ortho scaling is broken */
+    if (ViewFlag == ORTHO)
+    {
+        glLoadIdentity();
+        glTranslatef(PANx, PANy, -5.0);
+        glRotatef(ROTx, 1.0f, 0.0f, 0.0f);
+        glRotatef(ROTy, 0.0f, 1.0f, 0.0f);
+
+    }
+    for(int idx = 0 ; idx < model->tris_size ; idx++)
+    {
+        STL_triangle *tri = &model->tris[idx];
+        glBegin(GL_POLYGON);
+        glNormal3f(tri->normal[0], tri->normal[1], tri->normal[2]);
+        glVertex3f(tri->vertex_a[0], tri->vertex_a[1], tri->vertex_a[2]);
+        glVertex3f(tri->vertex_b[0], tri->vertex_b[1], tri->vertex_b[2]);
+        glVertex3f(tri->vertex_c[0], tri->vertex_c[1], tri->vertex_c[2]);
+        glEnd();
+    }
+    /* swap the buffers to display, since double buffering is used.*/
+    glutSwapBuffers();
+    GetFPS();  /* Get frame rate stats */
+
+    /* Copy saved window name into temp string arg1 so that we can add stats */
+
+    /* cut down on the number of redraws on window title.  Only draw once per sample*/
+    if (FrameCount == 0) {
+        char window_title_fps[sizeof(window_title)+32];
+        snprintf(window_title_fps, sizeof(window_title_fps), "%s - %.2f FPS", window_title, FrameRate);
+        glutSetWindowTitle(window_title_fps);
+    }
+}
+
 
 /* The function called whenever a mouse button event occurs */
 void mouseButtonPress(int button, int state, int x, int y)
@@ -741,6 +792,7 @@ int main(int argc, char *argv[])
 
         if (filein == NULL) {
             filein = fopen(argv[i], "rb");
+            filename = argv[i];
             if (filein == NULL) {
                 int e = errno;
                 printf("%s: %s: %s\n\n", argv[0], argv[i], strerror(e));
@@ -797,12 +849,12 @@ int main(int argc, char *argv[])
         printf("Reading");
     }
 
-    STL_data *s = malloc(sizeof(STL_data));
-    s->extents.x_max = 0; s->extents.x_min = 0;
-    s->extents.y_max = 0; s->extents.y_min = 0;
-    s->extents.z_max = 0; s->extents.z_min = 0;
-    s->tris_size = poly_count;
-    s->tris = malloc(s->tris_size * sizeof(STL_triangle));
+    model = malloc(sizeof(STL_data));
+    model->extents.x_max = 0; model->extents.x_min = 0;
+    model->extents.y_max = 0; model->extents.y_min = 0;
+    model->extents.z_max = 0; model->extents.z_min = 0;
+    model->tris_size = poly_count;
+    model->tris = malloc(model->tris_size * sizeof(STL_triangle));
 
     /* reset the poly counter so that it is also an index for the data */
     int old_poly_count = 0;
@@ -811,7 +863,7 @@ int main(int argc, char *argv[])
 
     CollectPolygons();
     rewind(filein);
-    CollectPolygons_new(filein, s);
+    CollectPolygons_new(filein, model);
 
 //    for (int idx = 0; idx < s->tris_size; idx++) {
 //        printf("Poly %i:\n", idx);
@@ -852,7 +904,7 @@ int main(int argc, char *argv[])
 //    }
 
     FindExtents();
-    FindExtents_new(s);
+    FindExtents_new(model);
 //    printf("Old Extents: %f/%f %f/%f %f/%f\nNew Extents: %f/%f %f/%f %f/%f\n",
 //           extent_neg_x, extent_pos_x, extent_neg_y,
 //           extent_pos_y, extent_neg_z, extent_pos_z,
@@ -861,7 +913,7 @@ int main(int argc, char *argv[])
 //    );
 
     TransformToOrigin();
-    TransformToOrigin_new(s);
+    TransformToOrigin_new(model);
 //    printf("Old Extents: %f/%f %f/%f %f/%f\nNew Extents: %f/%f %f/%f %f/%f\n",
 //           extent_neg_x, extent_pos_x, extent_neg_y,
 //           extent_pos_y, extent_neg_z, extent_pos_z,
@@ -880,10 +932,11 @@ int main(int argc, char *argv[])
 
     if (verbose) {
         printf("File Processed\n");
-        printf("Poly Count = %i\n", old_poly_count);
-        printf("Part extents are: x, y, z\n");
-        printf("\t%f, %f, %f\n", extent_pos_x, extent_pos_y, extent_pos_z);
-        printf("\t%f, %f, %f\n", extent_neg_x, extent_neg_y, extent_neg_z);
+        //printf("Poly Count = %i\n", old_poly_count);
+        printf("Poly Count = %u\n", model->tris_size);
+        printf("Part extents:\nx: %f/%f y: %f/%f z: %f/%f\n",
+               model->extents.x_min, model->extents.x_max, model->extents.y_min,
+               model->extents.y_max, model->extents.z_min, model->extents.z_max);
     }
 
     if (ViewFlag == ORTHO)
@@ -910,13 +963,13 @@ int main(int argc, char *argv[])
     /* the window starts at the upper left corner of the screen */
     glutInitWindowPosition(0, 0);  
 
-    snprintf(window_title, sizeof(window_title), "ViewStl 0.35 viewing: %s - %i polys - %iKB", argv[1], poly_count, mem_size/1024);
+    snprintf(window_title, sizeof(window_title), "ViewStl 0.35 viewing: %s - %i polys - %iKB", filename, poly_count, mem_size/1024);
 
     window = glutCreateWindow(arg1); 
 
     /* Register the event callback functions since we are using GLUT */
-    glutDisplayFunc(&DrawGLScene); /* Register the function to do all our OpenGL drawing. */ 
-    glutIdleFunc(&DrawGLScene); /* Even if there are no events, redraw our gl scene. */
+    glutDisplayFunc(&DrawGLScene_new); /* Register the function to do all our OpenGL drawing. */
+    glutIdleFunc(&DrawGLScene_new); /* Even if there are no events, redraw our gl scene. */
     glutReshapeFunc(&ReSizeGLScene); /* Register the function called when our window is resized. */
     glutKeyboardFunc(&keyPressed); /* Register the function called when the keyboard is pressed. */
     glutSpecialFunc(&specialkeyPressed); /* Register the special key function */ 
