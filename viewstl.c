@@ -667,8 +667,8 @@ void mouseMotionPress(int x, int y)
         printf("You did this with the mouse--> %i %i\n", x, y); 
     if (BUTTON == LMB)
     {
-        model->transform.pan_x += ((MOUSEx - x)*(tanf(0.26179939)*(Z_Depth+scale)))*.005;
-        model->transform.pan_y -= ((MOUSEy - y)*(tanf(0.26179939)*(Z_Depth+scale)))*.005;
+        model->transform.pan_x += ((MOUSEx - x)*(tanf(0.26179939)*(model->transform.z_depth+scale)))*.005;
+        model->transform.pan_y -= ((MOUSEy - y)*(tanf(0.26179939)*(model->transform.z_depth+scale)))*.005;
 //        PANx = PANx + ((MOUSEx - x)*(tanf(0.26179939)*(Z_Depth+scale)))*.005;
 //        PANy = PANy - ((MOUSEy - y)*(tanf(0.26179939)*(Z_Depth+scale)))*.005;
         MOUSEx = x;
@@ -685,8 +685,8 @@ void mouseMotionPress(int x, int y)
     } 
     if (BUTTON == RMB)
     {
-        model->transform.scale += ((MOUSEy - y)*(tanf(0.26179939)*(model->transform.z_depth+scale)))*.01;
-        model->transform.orth_scale += ((MOUSEy - y)*(tanf(0.26179939)*(model->transform.z_depth+scale)))*.01;
+        model->transform.scale += ((MOUSEy - y)*(tanf(0.26179939)*(model->transform.z_depth+model->transform.scale)))*.01;
+        model->transform.orth_scale += ((MOUSEy - y)*(tanf(0.26179939)*(model->transform.z_depth+model->transform.orth_scale)))*.01;
 //        scale = scale + ((MOUSEy - y)*(tanf(0.26179939)*(Z_Depth+scale)))*.01;
 //        oScale = oScale + ((MOUSEy - y)*(tanf(0.26179939)*(Z_Depth+scale)))*.01;
         /* scale = scale - ((MOUSEy - y)*0.05);
@@ -750,18 +750,18 @@ void specialkeyPressed (int key, int x, int y)
 
     switch(key) {
         case 1: /* Pan is assigned the F1 key */
-            PANx = PANx + ((MOUSEx - x)*(tanf(0.26179939)*(Z_Depth+scale)))*.005;
-            PANy = PANy - ((MOUSEy - y)*(tanf(0.26179939)*(Z_Depth+scale)))*.005;
+            model->transform.pan_x += ((MOUSEx - x)*(tanf(0.26179939)*(model->transform.z_depth+model->transform.scale)))*.005;
+            model->transform.pan_y -= ((MOUSEy - y)*(tanf(0.26179939)*(model->transform.z_depth+model->transform.scale)))*.005;
             MOUSEx = x; MOUSEy = y; break;
         case 2: /* Zoom or Scale is the F2 key */
-            scale = scale + ((MOUSEy - y)*(tanf(0.26179939)*(Z_Depth+scale)))*.01;
-            oScale = oScale + ((MOUSEy - y)*(tanf(0.26179939)*(Z_Depth+scale)))*.01;
+            model->transform.scale += ((MOUSEy - y)*(tanf(0.26179939)*(model->transform.z_depth+model->transform.scale)))*.01;
+            model->transform.orth_scale += ((MOUSEy - y)*(tanf(0.26179939)*(model->transform.z_depth+model->transform.orth_scale)))*.01;
             /* scale = scale - ((MOUSEy - y)*0.05);
                oScale = oScale - ((MOUSEy - y)*0.05);  */
             MOUSEx = x; MOUSEy = y; break;
         case 3: /* Rotate assigned the F3 key */
-            ROTy = ROTy - ((MOUSEx - x)*0.5);
-            ROTx = ROTx - ((MOUSEy - y)*0.5);
+            model->transform.rot_y -= ((MOUSEx - x)*0.5);
+            model->transform.rot_x -= ((MOUSEy - y)*0.5);
             MOUSEx = x; MOUSEy = y; break;
         case 4: /* Cool Display Stuff... */
             glPolygonMode(GL_FRONT, GL_FILL); break;
