@@ -140,54 +140,7 @@ STL_data *model;
 /* This function puts all the polygons it finds into the global array poly_list */
 /* it uses the global variable Poly_Count to index this array Poly_Count is used */
 /* elsewhere so it needs to be left alone once this finishes */
-static void CollectPolygons()
-{
-    while ( !feof(filein) )
-    {
-
-        fgets(oneline, 255, filein);
-        sscanf(oneline, "%s", arg1);
-        if (strcasecmp(arg1, poly_normal) == 0)  /* Is this a normal ?? */
-        {
-            sscanf(oneline, "%s %s %f %f %f", arg1, arg2, &t1, &t2, &t3);
-            poly_list[0+(poly_count * 12)] = t1;
-            poly_list[1+(poly_count * 12)] = t2;
-            poly_list[2+(poly_count * 12)] = t3;
-
-        }
-
-        if (strcasecmp(arg1, poly_vertex) == 0)  /* Is it a vertex ?  */
-        {
-            sscanf(oneline, "%s %f %f %f", arg1, &t1, &t2, &t3);
-            poly_list[3+(poly_count * 12)] = t1;
-            poly_list[4+(poly_count * 12)] = t2;
-            poly_list[5+(poly_count * 12)] = t3;
-
-            fgets(oneline, 255, filein);  /* Next two lines vertices also!  */
-            sscanf(oneline, "%s %f %f %f", arg1, &t1, &t2, &t3);
-            poly_list[6+(poly_count * 12)] = t1;
-            poly_list[7+(poly_count * 12)] = t2;
-            poly_list[8+(poly_count * 12)] = t3;
-
-            fgets(oneline, 255, filein);
-            sscanf(oneline, "%s %f %f %f", arg1, &t1, &t2, &t3);
-            poly_list[9+(poly_count * 12)] = t1;
-            poly_list[10+(poly_count * 12)] = t2;
-            poly_list[11+(poly_count * 12)] = t3;
-        } 
-
-        if (strcasecmp(arg1, poly_end) == 0)
-        {
-            poly_count = poly_count + 1;
-            if ((poly_count % 500) == 0 && verbose)
-                printf(".");
-        }
-    }
-    if (verbose)
-        printf("\n");
-}
-
-static void CollectPolygons_new(FILE *f, STL_data *stl)
+static void CollectPolygons(FILE *f, STL_data *stl)
 {
     char poly_buf[256];
     char poly_section[64];
@@ -237,64 +190,12 @@ static void CollectPolygons_new(FILE *f, STL_data *stl)
     if (verbose)
         printf("\n");
 }
+
 /* This function reads through the array of polygons (poly_list) to find the */
 /* largest and smallest vertices in the model.  This data will be used by the */
 /* transform_model function to center the part at the origin for rotation */
 /* and easy autoscale */
-static void FindExtents()
-{
-    int x;
-    /* Find geometry extents */
-    for (x = 0 ; x < poly_count ; x = x + 1)
-    {
-        /* first the positive vertex check for each poly */
-        /* this code needs to be way shorter, but go with what works */
-        if (poly_list[3+(x * 12)] > extent_pos_x)
-            extent_pos_x = poly_list[3+(x * 12)];
-        if (poly_list[4+(x * 12)] > extent_pos_y)
-            extent_pos_y = poly_list[4+(x * 12)];
-        if (poly_list[5+(x * 12)] > extent_pos_z)
-            extent_pos_z = poly_list[5+(x * 12)];
-
-        if (poly_list[6+(x * 12)] > extent_pos_x)
-            extent_pos_x = poly_list[6+(x * 12)];
-        if (poly_list[7+(x * 12)] > extent_pos_y)
-            extent_pos_y = poly_list[7+(x * 12)];
-        if (poly_list[8+(x * 12)] > extent_pos_z)
-            extent_pos_z = poly_list[8+(x * 12)];
-
-        if (poly_list[9+(x * 12)] > extent_pos_x)
-            extent_pos_x = poly_list[9+(x * 12)];
-        if (poly_list[10+(x * 12)] > extent_pos_y)
-            extent_pos_y = poly_list[10+(x * 12)];
-        if (poly_list[11+(x * 12)] > extent_pos_z)
-            extent_pos_z = poly_list[11+(x * 12)];
-
-        /* then the negative checks */
-        if (poly_list[3+(x * 12)] < extent_neg_x)
-            extent_neg_x = poly_list[3+(x * 12)];
-        if (poly_list[4+(x * 12)] < extent_neg_y)
-            extent_neg_y = poly_list[4+(x * 12)];
-        if (poly_list[5+(x * 12)] < extent_neg_z)
-            extent_neg_z = poly_list[5+(x * 12)];
-
-        if (poly_list[6+(x * 12)] < extent_neg_x)
-            extent_neg_x = poly_list[6+(x * 12)];
-        if (poly_list[7+(x * 12)] < extent_neg_y)
-            extent_neg_y = poly_list[7+(x * 12)];
-        if (poly_list[8+(x * 12)] < extent_neg_z)
-            extent_neg_z = poly_list[8+(x * 12)];
-
-        if (poly_list[9+(x * 12)] < extent_neg_x)
-            extent_neg_x = poly_list[9+(x * 12)];
-        if (poly_list[10+(x * 12)] < extent_neg_y)
-            extent_neg_y = poly_list[10+(x * 12)];
-        if (poly_list[11+(x * 12)] < extent_neg_z)
-            extent_neg_z = poly_list[11+(x * 12)];
-    }
-}
-
-static void FindExtents_new(STL_data *stl)
+static void FindExtents(STL_data *stl)
 {
     STL_extents *extents = &(stl->extents);
 
@@ -337,68 +238,7 @@ static void FindExtents_new(STL_data *stl)
 /* This translates the center of the rectangular bounding box surrounding */
 /* the model to the origin.  Makes for good rotation.  Also it does a quick */
 /* Z depth calculation that will be used bring the model into view (mostly) */
-
-static void TransformToOrigin()
-{
-    int x;
-    float LongerSide, ViewAngle;
-
-    /* first transform into positive quadrant */
-    for (x = 0 ; x < poly_count ; x = x + 1)
-    {
-        poly_list[3+(x * 12)] = poly_list[3+(x * 12)] + (0 - extent_neg_x);
-        poly_list[4+(x * 12)] = poly_list[4+(x * 12)] + (0 - extent_neg_y);
-        poly_list[5+(x * 12)] = poly_list[5+(x * 12)] + (0 - extent_neg_z);
-
-        poly_list[6+(x * 12)] = poly_list[6+(x * 12)] + (0 - extent_neg_x);
-        poly_list[7+(x * 12)] = poly_list[7+(x * 12)] + (0 - extent_neg_y);
-        poly_list[8+(x * 12)] = poly_list[8+(x * 12)] + (0 - extent_neg_z);
-
-        poly_list[9+(x * 12)] = poly_list[9+(x * 12)] + (0 - extent_neg_x);
-        poly_list[10+(x * 12)] = poly_list[10+(x * 12)] + (0 - extent_neg_y);
-        poly_list[11+(x * 12)] = poly_list[11+(x * 12)] + (0 - extent_neg_z);
-    }
-    FindExtents();
-    /* Do quick Z_Depth calculation while part resides in ++ quadrant */
-    /* Convert Field of view to radians */
-    ViewAngle = ((FOV / 2) * (PI / 180));
-    if (extent_pos_x > extent_pos_y)
-        LongerSide = extent_pos_x;
-    else
-        LongerSide = extent_pos_y;
-
-    /* Put the result where the main drawing function can see it */
-    Z_Depth = ((LongerSide / 2) / tanf(ViewAngle));
-    Z_Depth = Z_Depth * -1;
-
-    /* Do another calculation for clip planes */
-    /* Take biggest part dimension and use it to size the planes */
-    if ((extent_pos_x > extent_pos_y) && (extent_pos_x > extent_pos_z))
-        Big_Extent = extent_pos_x;
-    if ((extent_pos_y > extent_pos_x) && (extent_pos_y > extent_pos_z))
-        Big_Extent = extent_pos_y;
-    if ((extent_pos_z > extent_pos_y) && (extent_pos_z > extent_pos_x))
-        Big_Extent = extent_pos_z;
-
-    /* Then calculate center and put it back to origin */
-    for (x = 0 ; x < poly_count ; x = x + 1)
-    {
-        poly_list[3+(x * 12)] = poly_list[3+(x * 12)] - (extent_pos_x/2);
-        poly_list[4+(x * 12)] = poly_list[4+(x * 12)] - (extent_pos_y/2);
-        poly_list[5+(x * 12)] = poly_list[5+(x * 12)] - (extent_pos_z/2);
-
-        poly_list[6+(x * 12)] = poly_list[6+(x * 12)] - (extent_pos_x/2);
-        poly_list[7+(x * 12)] = poly_list[7+(x * 12)] - (extent_pos_y/2);
-        poly_list[8+(x * 12)] = poly_list[8+(x * 12)] - (extent_pos_z/2);
-
-        poly_list[9+(x * 12)] = poly_list[9+(x * 12)] - (extent_pos_x/2);
-        poly_list[10+(x * 12)] = poly_list[10+(x * 12)] - (extent_pos_y/2);
-        poly_list[11+(x * 12)] = poly_list[11+(x * 12)] - (extent_pos_z/2);
-    }
-
-}
-
-static void TransformToOrigin_new(STL_data *stl) {
+static void TransformToOrigin(STL_data *stl) {
     float LongerSide, ViewAngle;
     STL_extents *extents = &(stl->extents);
 
@@ -427,7 +267,7 @@ static void TransformToOrigin_new(STL_data *stl) {
         stl->tris[poly_idx].vertex_c[1] += (0 - extents->y_min);
         stl->tris[poly_idx].vertex_c[2] += (0 - extents->z_min);
     }
-    FindExtents_new(stl);
+    FindExtents(stl);
     /* Do quick Z_Depth calculation while part resides in ++ quadrant */
     /* Convert Field of view to radians */
     ViewAngle = ((FOV / 2) * (PI / 180));
@@ -553,53 +393,6 @@ void ReSizeGLScene(int Width, int Height)
 
 /* The main drawing function. */
 void DrawGLScene()
-{
-    if ((!update) && (!idle_draw))
-        return;
-    update = NO;
-    glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);	/* Clear The Screen And The Depth Buffer*/
-    /* for now use two different methods of scaling depending on ortho or perspective */
-    if (ViewFlag == PERSPECTIVE)
-    {
-        glLoadIdentity(); 
-        glTranslatef(PANx, PANy, (Z_Depth + scale)); 
-        glRotatef(ROTx, 1.0f, 0.0f, 0.0f);
-        glRotatef(ROTy, 0.0f, 1.0f, 0.0f); 
-    }
-
-    /* ortho scaling is broken */
-    if (ViewFlag == ORTHO)
-    {
-        glLoadIdentity();
-        glTranslatef(PANx, PANy, -5.0);
-        glRotatef(ROTx, 1.0f, 0.0f, 0.0f);
-        glRotatef(ROTy, 0.0f, 1.0f, 0.0f);
-
-    }
-    for(x = 0 ; x < poly_count ; x++)
-    {
-        glBegin(GL_POLYGON);
-        glNormal3f(poly_list[0+(x * 12)],poly_list[1+(x * 12)], poly_list[2+(x * 12)]);
-        glVertex3f(poly_list[3+(x * 12)], poly_list[4+(x * 12)], poly_list[5+(x * 12)]);
-        glVertex3f(poly_list[6+(x * 12)], poly_list[7+(x * 12)], poly_list[8+(x * 12)]);
-        glVertex3f(poly_list[9+(x * 12)], poly_list[10+(x * 12)], poly_list[11+(x * 12)]);
-        glEnd();
-    }
-    /* swap the buffers to display, since double buffering is used.*/
-    glutSwapBuffers();
-    GetFPS();  /* Get frame rate stats */
-
-    /* Copy saved window name into temp string arg1 so that we can add stats */
-
-    /* cut down on the number of redraws on window title.  Only draw once per sample*/
-    if (FrameCount == 0) {
-        char window_title_fps[sizeof(window_title)+32];
-        snprintf(window_title_fps, sizeof(window_title_fps), "%s - %.2f FPS", window_title, FrameRate);
-        glutSetWindowTitle(window_title_fps);
-    }
-}
-
-void DrawGLScene_new()
 {
     if ((!update) && (!idle_draw))
         return;
@@ -885,9 +678,8 @@ int main(int argc, char *argv[])
     old_poly_count = poly_count;
     poly_count = 0;
 
-    CollectPolygons();
     rewind(filein);
-    CollectPolygons_new(filein, model);
+    CollectPolygons(filein, model);
 
 //    for (int idx = 0; idx < s->tris_size; idx++) {
 //        printf("Poly %i:\n", idx);
@@ -927,8 +719,7 @@ int main(int argc, char *argv[])
 //        }
 //    }
 
-    FindExtents();
-    FindExtents_new(model);
+    FindExtents(model);
 //    printf("Old Extents: %f/%f %f/%f %f/%f\nNew Extents: %f/%f %f/%f %f/%f\n",
 //           extent_neg_x, extent_pos_x, extent_neg_y,
 //           extent_pos_y, extent_neg_z, extent_pos_z,
@@ -936,8 +727,7 @@ int main(int argc, char *argv[])
 //           s->extents.y_max, s->extents.z_min, s->extents.z_max
 //    );
 
-    TransformToOrigin();
-    TransformToOrigin_new(model);
+    TransformToOrigin(model);
 //    printf("Old Extents: %f/%f %f/%f %f/%f\nNew Extents: %f/%f %f/%f %f/%f\n",
 //           extent_neg_x, extent_pos_x, extent_neg_y,
 //           extent_pos_y, extent_neg_z, extent_pos_z,
@@ -946,7 +736,7 @@ int main(int argc, char *argv[])
 //    );
 
 //    FindExtents();
-//    FindExtents_new(s);
+//    FindExtents(s);
 //    printf("Old Extents: %f/%f %f/%f %f/%f\nNew Extents: %f/%f %f/%f %f/%f\n",
 //           extent_neg_x, extent_pos_x, extent_neg_y,
 //           extent_pos_y, extent_neg_z, extent_pos_z,
@@ -992,8 +782,8 @@ int main(int argc, char *argv[])
     window = glutCreateWindow(arg1); 
 
     /* Register the event callback functions since we are using GLUT */
-    glutDisplayFunc(&DrawGLScene_new); /* Register the function to do all our OpenGL drawing. */
-    glutIdleFunc(&DrawGLScene_new); /* Even if there are no events, redraw our gl scene. */
+    glutDisplayFunc(&DrawGLScene); /* Register the function to do all our OpenGL drawing. */
+    glutIdleFunc(&DrawGLScene); /* Even if there are no events, redraw our gl scene. */
     glutReshapeFunc(&ReSizeGLScene); /* Register the function called when our window is resized. */
     glutKeyboardFunc(&keyPressed); /* Register the function called when the keyboard is pressed. */
     glutSpecialFunc(&specialkeyPressed); /* Register the special key function */ 
