@@ -22,6 +22,8 @@
 
 /* Integrated patches from Hans  hhof@users.sourceforge.net 0.35 */
 
+// TODO: Replace sscanf with slightly safer alternatives. They can overrun their dest arrays currently.
+
 #include <GL/gl.h>   // OpenGL itself.
 #include <GL/glu.h>  // GLU support library.
 #include <GL/glut.h> // GLUT support library.
@@ -70,7 +72,6 @@ char *begin_stl_solid = "solid";
 char *poly_normal = "facet";
 char *poly_vertex = "vertex";
 char *poly_end = "endfacet";
-char arg1[100];
 char window_title[256];
 FILE *filein; /* Filehandle for the STL file to be viewed */
 char *filename;
@@ -625,11 +626,12 @@ int main(int argc, char *argv[])
     /* Read through the file to get number of polygons so that we can malloc */
     /* The right amount of ram plus a little :)  */
     char tmp[255];
+    char tmp_arg[24];
     while ( !feof(filein) )
     {
         fgets(tmp, 255, filein);
-        sscanf(tmp, "%s", arg1);
-        if (strcasecmp(arg1, poly_end)==0)
+        sscanf(tmp, "%s", tmp_arg);
+        if (strcasecmp(tmp_arg, poly_end)==0)
             poly_count = poly_count + 1;
     }
 
@@ -763,7 +765,7 @@ int main(int argc, char *argv[])
 
     snprintf(window_title, sizeof(window_title), "ViewStl 0.35 viewing: %s - %i polys - %iKB", filename, poly_count, mem_size/1024);
 
-    window = glutCreateWindow(arg1); 
+    window = glutCreateWindow(window_title);
 
     /* Register the event callback functions since we are using GLUT */
     glutDisplayFunc(&DrawGLScene); /* Register the function to do all our OpenGL drawing. */
