@@ -65,7 +65,6 @@
 
 /* Declarations ------------------------------------- */
 
-char oneline[255];
 char *end_stl_solid = "endsolid";
 char *begin_stl_solid = "solid";
 char *poly_normal = "facet";
@@ -131,7 +130,7 @@ static void CollectPolygons(FILE *f, STL_data *stl)
 {
     char poly_buf[256];
     char poly_section[64];
-    int poly_idx = 0;
+    unsigned int poly_idx = 0;
 
     while (poly_idx < stl->tris_size && !feof(f))
     {
@@ -186,7 +185,7 @@ static void FindExtents(STL_data *stl)
 {
     STL_extents *extents = &(stl->extents);
 
-    for (int poly_idx = 0; poly_idx < stl->tris_size; poly_idx++)
+    for (unsigned int poly_idx = 0; poly_idx < stl->tris_size; poly_idx++)
     {
         float *vertex_a = stl->tris[poly_idx].vertex_a;
         float *vertex_b = stl->tris[poly_idx].vertex_b;
@@ -230,7 +229,7 @@ static void TransformToOrigin(STL_data *stl) {
     STL_extents *extents = &(stl->extents);
 
     /* first transform into positive quadrant */
-    for (int poly_idx = 0; poly_idx < stl->tris_size; poly_idx++) {
+    for (unsigned int poly_idx = 0; poly_idx < stl->tris_size; poly_idx++) {
         //poly_list[3 + (x * 12)] = poly_list[3 + (x * 12)] + (0 - extent_neg_x);
         stl->tris[poly_idx].vertex_a[0] += (0 - extents->x_min);
         //poly_list[4 + (x * 12)] = poly_list[4 + (x * 12)] + (0 - extent_neg_y);
@@ -274,7 +273,7 @@ static void TransformToOrigin(STL_data *stl) {
         extents->ext_max = extents->z_max;
 
     /* Then calculate center and put it back to origin */
-    for (int poly_idx = 0; poly_idx < stl->tris_size; poly_idx++) {
+    for (unsigned int poly_idx = 0; poly_idx < stl->tris_size; poly_idx++) {
 //        poly_list[3 + (x * 12)] = poly_list[3 + (x * 12)] - (extent_pos_x / 2);
 //        poly_list[4 + (x * 12)] = poly_list[4 + (x * 12)] - (extent_pos_y / 2);
 //        poly_list[5 + (x * 12)] = poly_list[5 + (x * 12)] - (extent_pos_z / 2);
@@ -403,7 +402,7 @@ void DrawGLScene()
         glRotatef(model->transform.rot_y, 0.0f, 1.0f, 0.0f);
 
     }
-    for(int idx = 0 ; idx < model->tris_size ; idx++)
+    for(unsigned int idx = 0 ; idx < model->tris_size ; idx++)
     {
         STL_triangle *tri = &model->tris[idx];
         glBegin(GL_POLYGON);
@@ -625,10 +624,11 @@ int main(int argc, char *argv[])
     int poly_count = 0;
     /* Read through the file to get number of polygons so that we can malloc */
     /* The right amount of ram plus a little :)  */
+    char tmp[255];
     while ( !feof(filein) )
     {
-        fgets(oneline, 255, filein);
-        sscanf(oneline, "%s", arg1);
+        fgets(tmp, 255, filein);
+        sscanf(tmp, "%s", arg1);
         if (strcasecmp(arg1, poly_end)==0)
             poly_count = poly_count + 1;
     }
