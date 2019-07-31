@@ -1,5 +1,6 @@
-CFLAGS = -fomit-frame-pointer -march=native -Wall -pipe -O2
-CFLAGS_DEBUG = -march=native -g -Wall -pipe
+CFLAGS_COMMON = -march=native -Wall -Wextra -pipe
+CFLAGS = ${CFLAGS_COMMON} -fomit-frame-pointer  -O2
+CFLAGS_DEBUG = ${CFLAGS_COMMON} -g
 CC = gcc
 LIBRARIES = -lglut -lGL -lGLU -lm
 
