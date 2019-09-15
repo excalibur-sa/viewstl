@@ -182,24 +182,14 @@ static void TransformToOrigin(STL_data *stl) {
 
     /* first transform into positive quadrant */
     for (unsigned int poly_idx = 0; poly_idx < stl->tris_size; poly_idx++) {
-        //poly_list[3 + (x * 12)] = poly_list[3 + (x * 12)] + (0 - extent_neg_x);
         stl->tris[poly_idx].vertex_a[0] += (0 - extents->x_min);
-        //poly_list[4 + (x * 12)] = poly_list[4 + (x * 12)] + (0 - extent_neg_y);
         stl->tris[poly_idx].vertex_a[1] += (0 - extents->y_min);
-        //poly_list[5 + (x * 12)] = poly_list[5 + (x * 12)] + (0 - extent_neg_z);
         stl->tris[poly_idx].vertex_a[2] += (0 - extents->z_min);
 
-//        poly_list[6 + (x * 12)] = poly_list[6 + (x * 12)] + (0 - extent_neg_x);
-//        poly_list[7 + (x * 12)] = poly_list[7 + (x * 12)] + (0 - extent_neg_y);
-//        poly_list[8 + (x * 12)] = poly_list[8 + (x * 12)] + (0 - extent_neg_z);
 
         stl->tris[poly_idx].vertex_b[0] += (0 - extents->x_min);
         stl->tris[poly_idx].vertex_b[1] += (0 - extents->y_min);
         stl->tris[poly_idx].vertex_b[2] += (0 - extents->z_min);
-
-//        poly_list[9 + (x * 12)] = poly_list[9 + (x * 12)] + (0 - extent_neg_x);
-//        poly_list[10 + (x * 12)] = poly_list[10 + (x * 12)] + (0 - extent_neg_y);
-//        poly_list[11 + (x * 12)] = poly_list[11 + (x * 12)] + (0 - extent_neg_z);
 
         stl->tris[poly_idx].vertex_c[0] += (0 - extents->x_min);
         stl->tris[poly_idx].vertex_c[1] += (0 - extents->y_min);
@@ -226,25 +216,13 @@ static void TransformToOrigin(STL_data *stl) {
 
     /* Then calculate center and put it back to origin */
     for (unsigned int poly_idx = 0; poly_idx < stl->tris_size; poly_idx++) {
-//        poly_list[3 + (x * 12)] = poly_list[3 + (x * 12)] - (extent_pos_x / 2);
-//        poly_list[4 + (x * 12)] = poly_list[4 + (x * 12)] - (extent_pos_y / 2);
-//        poly_list[5 + (x * 12)] = poly_list[5 + (x * 12)] - (extent_pos_z / 2);
-
         stl->tris[poly_idx].vertex_a[0] -= (extents->x_max / 2);
         stl->tris[poly_idx].vertex_a[1] -= (extents->y_max / 2);
         stl->tris[poly_idx].vertex_a[2] -= (extents->z_max / 2);
 
-//        poly_list[6 + (x * 12)] = poly_list[6 + (x * 12)] - (extent_pos_x / 2);
-//        poly_list[7 + (x * 12)] = poly_list[7 + (x * 12)] - (extent_pos_y / 2);
-//        poly_list[8 + (x * 12)] = poly_list[8 + (x * 12)] - (extent_pos_z / 2);
-
         stl->tris[poly_idx].vertex_b[0] -= (extents->x_max / 2);
         stl->tris[poly_idx].vertex_b[1] -= (extents->y_max / 2);
         stl->tris[poly_idx].vertex_b[2] -= (extents->z_max / 2);
-
-//        poly_list[9 + (x * 12)] = poly_list[9 + (x * 12)] - (extent_pos_x / 2);
-//        poly_list[10 + (x * 12)] = poly_list[10 + (x * 12)] - (extent_pos_y / 2);
-//        poly_list[11 + (x * 12)] = poly_list[11 + (x * 12)] - (extent_pos_z / 2);
 
         stl->tris[poly_idx].vertex_c[0] -= (extents->x_max / 2);
         stl->tris[poly_idx].vertex_c[1] -= (extents->y_max / 2);
@@ -400,8 +378,6 @@ void mouseMotionPress(int x, int y)
     {
         model->transform.pan_x += ((MOUSEx - x)*(tanf(0.26179939)*(model->transform.z_depth+model->transform.scale)))*.005;
         model->transform.pan_y -= ((MOUSEy - y)*(tanf(0.26179939)*(model->transform.z_depth+model->transform.scale)))*.005;
-//        PANx = PANx + ((MOUSEx - x)*(tanf(0.26179939)*(Z_Depth+scale)))*.005;
-//        PANy = PANy - ((MOUSEy - y)*(tanf(0.26179939)*(Z_Depth+scale)))*.005;
         MOUSEx = x;
         MOUSEy = y;
     } 
@@ -409,8 +385,6 @@ void mouseMotionPress(int x, int y)
     {
         model->transform.rot_x -= ((MOUSEy - y)*0.5);
         model->transform.rot_y -= ((MOUSEx - x)*0.5);
-//        ROTy = ROTy - ((MOUSEx - x)*0.5);
-//        ROTx = ROTx - ((MOUSEy - y)*0.5);
         MOUSEx = x;
         MOUSEy = y;
     } 
@@ -418,10 +392,6 @@ void mouseMotionPress(int x, int y)
     {
         model->transform.scale += ((MOUSEy - y)*(tanf(0.26179939)*(model->transform.z_depth+model->transform.scale)))*.01;
         model->transform.orth_scale += ((MOUSEy - y)*(tanf(0.26179939)*(model->transform.z_depth+model->transform.orth_scale)))*.01;
-//        scale = scale + ((MOUSEy - y)*(tanf(0.26179939)*(Z_Depth+scale)))*.01;
-//        oScale = oScale + ((MOUSEy - y)*(tanf(0.26179939)*(Z_Depth+scale)))*.01;
-        /* scale = scale - ((MOUSEy - y)*0.05);
-           oScale = oScale - ((MOUSEy - y)*0.05);  */
         MOUSEx = x;
         MOUSEy = y;
     } 
