@@ -606,6 +606,7 @@ void readStlBinary(FILE *f, STL_data *stl) {
         poly_idx++;
     }
 
+    fread(&stl->tris[poly_idx].attr, 2, 1, f);
 
 }
 
