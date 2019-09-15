@@ -782,7 +782,7 @@ int main(int argc, char *argv[])
     /* the window starts at the upper left corner of the screen */
     glutInitWindowPosition(0, 0);  
 
-    snprintf(window_title, sizeof(window_title), "ViewStl 0.35 viewing: %s (%s) - %i polys - %liKB (%iKB alloc)",
+    snprintf(window_title, sizeof(window_title), "ViewStl 1.0 viewing: %s (%s) - %i polys - %liKB (%iKB alloc)",
             filename, (model->type == STL_TYPE_ASCII ? "ascii" : "binary"),
             model->tris_size, (model->tris_size * sizeof(STL_triangle))/1024, model->_tris_malloc_size/1024);
 
