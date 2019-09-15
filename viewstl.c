@@ -129,60 +129,6 @@ typedef struct stl_struct {
 
 STL_data *model;
 
-/* This function puts all the polygons it finds into the global array poly_list */
-/* it uses the global variable Poly_Count to index this array Poly_Count is used */
-/* elsewhere so it needs to be left alone once this finishes */
-static void CollectPolygons(FILE *f, STL_data *stl)
-{
-    char poly_buf[256];
-    char poly_section[64];
-    unsigned int poly_idx = 0;
-
-    while (poly_idx < stl->tris_size && !feof(f))
-    {
-        fgets(poly_buf, 255, f);
-        sscanf(poly_buf, "%s", poly_section);
-        if (strcasecmp(poly_section, poly_normal) == 0)  /* Is this a normal ?? */
-        {
-            sscanf(poly_buf, "%*s %*s %f %f %f",
-                    &(stl->tris[poly_idx]).normal[0],
-                    &(stl->tris[poly_idx]).normal[1],
-                    &(stl->tris[poly_idx]).normal[2]
-            );
-        }
-
-        if (strcasecmp(poly_section, poly_vertex) == 0)  /* Is it a vertex ?  */
-        {
-            sscanf(poly_buf, "%*s %f %f %f",
-                    &(stl->tris[poly_idx]).vertex_a[0],
-                    &(stl->tris[poly_idx]).vertex_a[1],
-                    &(stl->tris[poly_idx]).vertex_a[2]
-            );
-
-            fgets(poly_buf, 255, f);  /* Next two lines vertices also!  */
-            sscanf(poly_buf, "%*s %f %f %f",
-                    &(stl->tris[poly_idx]).vertex_b[0],
-                    &(stl->tris[poly_idx]).vertex_b[1],
-                    &(stl->tris[poly_idx]).vertex_b[2]
-            );
-
-            fgets(poly_buf, 255, f);
-            sscanf(poly_buf, "%*s %f %f %f",
-                    &(stl->tris[poly_idx]).vertex_c[0],
-                    &(stl->tris[poly_idx]).vertex_c[1],
-                    &(stl->tris[poly_idx]).vertex_c[2]
-            );
-
-            poly_idx++;
-        }
-
-        if (strcasecmp(poly_section, poly_end) == 0 && (poly_idx % 500) == 0 && verbose)
-            printf(".");
-    }
-    if (verbose)
-        printf("\n");
-}
-
 /* This function reads through the array of polygons (poly_list) to find the */
 /* largest and smallest vertices in the model.  This data will be used by the */
 /* transform_model function to center the part at the origin for rotation */
@@ -641,12 +587,6 @@ void readStlBinary(FILE *f, STL_data *stl) {
 
     fread(&stl->header, 80, 1, f);
     fread(&stl->tris_size, 4, 1, f);
-
-    float tmp_normal[3];
-    float tmp_vertex_a[3];
-    float tmp_vertex_b[3];
-    float tmp_vertex_c[3];
-    uint16_t tmp_attr;
 
     printf("\n");
     while ( !feof(filein) && poly_idx + 1 < stl->tris_size ) {
