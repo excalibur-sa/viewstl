@@ -39,6 +39,8 @@
 #include <math.h>       /* Gotta do some trig */
 #include <errno.h>      /* Error checking */
 #include <libgen.h>     /* basename() */
+#include <sys/inotify.h> /* inotify interfaces */
+#include <sys/poll.h> /* needed for non-blocking inotify checks */
 
 /* ASCII code for the various keys used */
 #define ESCAPE 27     /* esc */
@@ -87,10 +89,15 @@ float Light_Diffuse[]=  { 1.2f, 1.2f, 1.2f, 1.0f };
 float Light_Position[]= { 2.0f, 2.0f, 0.0f, 1.0f };
 int ViewFlag = 0; /* 0=perspective, 1=ortho */
 int update = YES, idle_draw = YES;
-int verbose = NO;
+int verbose = NO, reload = NO;
 
 #define STL_TYPE_ASCII 0
 #define STL_TYPE_BINARY 1
+
+int reload_fd;
+int reload_wd;
+char reload_buffer[1024 * (sizeof(struct inotify_event) + 16)];
+struct pollfd reload_pfd[1];
 
 typedef struct stl_transform_struct {
     float pan_x;
@@ -128,6 +135,27 @@ typedef struct stl_struct {
 } STL_data;
 
 STL_data *model;
+
+int checkFileChanged() {
+    if (poll(reload_pfd, 1, 0) < 1) return 0;
+
+    int length = read(reload_fd, reload_buffer, 1024 * (sizeof(struct inotify_event) + 16));
+    if (length < 0) return 0;
+
+    int ptr = 0;
+    while (ptr < length) {
+        struct inotify_event *e = (struct inotify_event*) &reload_buffer[ptr];
+        if (!e->len) continue;
+        if (e->wd == reload_wd && strcmp(e->name, filename) == 0) return 1;
+        ptr += (sizeof(struct inotify_event) + e->len);
+    }
+    return 0;
+}
+
+void cleanup() {
+    inotify_rm_watch(reload_fd, reload_wd);
+    close(reload_fd);
+}
 
 /* This function reads through the array of polygons (poly_list) to find the */
 /* largest and smallest vertices in the model.  This data will be used by the */
@@ -353,6 +381,10 @@ void DrawGLScene()
         char window_title_fps[sizeof(window_title)+32];
         snprintf(window_title_fps, sizeof(window_title_fps), "%s - %.2f FPS", window_title, FrameRate);
         glutSetWindowTitle(window_title_fps);
+    }
+
+    if (reload && checkFileChanged()) {
+        printf("File change detected. Reloading model... (unimplemented)\n");
     }
 }
 
@@ -587,6 +619,7 @@ void usage(int e) {
     printf("  -p (Perspective View [default])\n");
     printf("  -f (Redraw only on view change)\n");
     printf("  -v (Report debug info to STDOUT)\n");
+    printf("  -r (Reload model on file change. (Linux only)\n");
     if (e)
        exit(1);
 }
@@ -604,6 +637,9 @@ int main(int argc, char *argv[])
 
         if (strcmp(argv[i], "-v") == 0)
             verbose = YES;
+
+        if (strcmp(argv[i], "-r") == 0)
+            reload = YES;
 
         if (filein == NULL) {
             filein = fopen(argv[i], "rb");
@@ -672,7 +708,21 @@ int main(int argc, char *argv[])
         printf("Running in perspective mode.\n");
 
     if (!idle_draw)
-        printf("Automatic redraw disabled.");
+        printf("Automatic redraw disabled.\n");
+
+    if (reload) {
+        reload_fd = inotify_init();
+
+        if (reload_fd < 0) {
+            printf("Something went wrong while enabling inotify. Disabling file watcher.\n");
+            reload = 0;
+        } else {
+            reload_wd = inotify_add_watch(reload_fd, dirname(filename), IN_CREATE | IN_MODIFY | IN_DELETE);
+            reload_pfd[0].fd = reload_fd;
+            reload_pfd[0].events = POLLIN;
+            printf("Watching for file changes.\n");
+        }
+    }
 
     /* Initialize GLUT state - glut will take any command line arguments that pertain to it or 
        X Windows - look at its documentation at http://reality.sgi.com/mjk/spec3/spec3.html */  
@@ -708,7 +758,8 @@ int main(int argc, char *argv[])
     /* Initialize our window. */
     InitGL(640, 480);
 
-    /* Start Event Processing Engine */  
+    /* Start Event Processing Engine */
+    atexit(cleanup);
     glutMainLoop();  
 
     return 1;
