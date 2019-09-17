@@ -41,6 +41,7 @@
 #include <libgen.h>     /* basename() */
 #include <sys/inotify.h> /* inotify interfaces */
 #include <sys/poll.h> /* needed for non-blocking inotify checks */
+#include "stl.h"
 
 /* ASCII code for the various keys used */
 #define ESCAPE 27     /* esc */
@@ -68,12 +69,6 @@
 
 
 /* Declarations ------------------------------------- */
-
-char *end_stl_solid = "endsolid";
-char *begin_stl_solid = "solid";
-char *poly_normal = "facet";
-char *poly_vertex = "vertex";
-char *poly_end = "endfacet";
 char window_title[256];
 FILE *filein; /* Filehandle for the STL file to be viewed */
 char *filename;
@@ -91,48 +86,13 @@ int ViewFlag = 0; /* 0=perspective, 1=ortho */
 int update = YES, idle_draw = YES;
 int verbose = NO, reload = NO;
 
-#define STL_TYPE_ASCII 0
-#define STL_TYPE_BINARY 1
 
 int reload_fd;
 int reload_wd;
 char reload_buffer[1024 * (sizeof(struct inotify_event) + 16)];
 struct pollfd reload_pfd[1];
 
-typedef struct stl_transform_struct {
-    float pan_x;
-    float pan_y;
-    float rot_x;
-    float rot_y;
-    float scale;
-    float orth_scale;
-    float z_depth;
-} STL_transform;
 
-typedef  struct stl_tri_struct {
-    float normal[3];
-    float vertex_a[3];
-    float vertex_b[3];
-    float vertex_c[3];
-    uint16_t attr;
-} STL_triangle;
-
-typedef struct stl_extents_struct {
-    float x_max; float y_max; float z_max;
-    float x_min; float y_min; float z_min;
-    float ext_max;
-} STL_extents;
-
-typedef struct stl_struct {
-    uint8_t header[80];
-    uint32_t tris_size;
-    uint32_t _tris_malloc_size;
-    int type;
-
-    STL_triangle* tris;
-    STL_extents extents;
-    STL_transform transform;
-} STL_data;
 
 STL_data *model;
 
@@ -514,102 +474,6 @@ void specialkeyPressed (int key, int x, int y)
     if (verbose)   
         printf("Special Key--> %i at %i, %i screen location\n", key, x, y);
     update = YES;
-}
-
-void readStlAscii(FILE *f, STL_data *stl) {
-    if (verbose) printf("Reading STL file in ascii mode.\n");
-    rewind(f);
-    uint32_t poly_idx = 0;
-
-    stl->_tris_malloc_size = sizeof(STL_triangle) * 64;
-    stl->tris = malloc(stl->_tris_malloc_size);
-
-    printf("\n");
-    char poly_buf[255];
-    char poly_section[24];
-    while ( !feof(filein) )
-    {
-        if (poly_idx + 1 > stl->_tris_malloc_size / sizeof(STL_triangle)) {
-            stl->tris = realloc(stl->tris, stl->_tris_malloc_size * 2);
-            stl->_tris_malloc_size *= 2;
-        }
-        if (sizeof(stl->_tris_malloc_size) > 1073741824) {
-            printf("STL data exceeds 1GB. Aborting...\n");
-            abort();
-        }
-
-        fgets(poly_buf, 255, f);
-        sscanf(poly_buf, "%s", poly_section);
-        if (strcasecmp(poly_section, poly_normal) == 0)  /* Is this a normal ?? */
-        {
-            sscanf(poly_buf, "%*s %*s %f %f %f",
-                   &(stl->tris[poly_idx]).normal[0],
-                   &(stl->tris[poly_idx]).normal[1],
-                   &(stl->tris[poly_idx]).normal[2]
-            );
-        }
-
-        if (strcasecmp(poly_section, poly_vertex) == 0)  /* Is it a vertex ?  */
-        {
-            sscanf(poly_buf, "%*s %f %f %f",
-                   &(stl->tris[poly_idx]).vertex_a[0],
-                   &(stl->tris[poly_idx]).vertex_a[1],
-                   &(stl->tris[poly_idx]).vertex_a[2]
-            );
-
-            fgets(poly_buf, 255, f);  /* Next two lines vertices also!  */
-            sscanf(poly_buf, "%*s %f %f %f",
-                   &(stl->tris[poly_idx]).vertex_b[0],
-                   &(stl->tris[poly_idx]).vertex_b[1],
-                   &(stl->tris[poly_idx]).vertex_b[2]
-            );
-
-            fgets(poly_buf, 255, f);
-            sscanf(poly_buf, "%*s %f %f %f",
-                   &(stl->tris[poly_idx]).vertex_c[0],
-                   &(stl->tris[poly_idx]).vertex_c[1],
-                   &(stl->tris[poly_idx]).vertex_c[2]
-            );
-
-            if (verbose) printf("\033[25m\033[999D\033[1A%u polygons read into %u bytes of memory.\033[K\n\033[0m", poly_idx, stl->_tris_malloc_size);
-            poly_idx++;
-        }
-    }
-
-    stl->tris_size = poly_idx;
-}
-
-void readStlBinary(FILE *f, STL_data *stl) {
-    if (verbose) printf("Reading STL file in binary mode.\n");
-    rewind(f);
-    uint32_t poly_idx = 0;
-
-    stl->_tris_malloc_size = sizeof(STL_triangle) * 64;
-    stl->tris = malloc(stl->_tris_malloc_size);
-
-    fread(&stl->header, 80, 1, f);
-    fread(&stl->tris_size, 4, 1, f);
-
-    printf("\n");
-    while ( !feof(filein) && poly_idx + 1 < stl->tris_size ) {
-        if (poly_idx + 1 > stl->_tris_malloc_size / sizeof(STL_triangle)) {
-            stl->tris = realloc(stl->tris, stl->_tris_malloc_size * 2);
-            stl->_tris_malloc_size *= 2;
-        }
-        if (sizeof(stl->_tris_malloc_size) > 1073741824) {
-            printf("STL data exceeds 1GB. Aborting...\n");
-            abort();
-        }
-
-        int r = fread(&stl->tris[poly_idx], 50, 1, f);
-        if (r != 1) break;
-
-        if (verbose) printf("\033[25m\033[999D\033[1A%u polygons read into %u bytes of memory.\033[K\n\033[0m", poly_idx, stl->_tris_malloc_size);
-        poly_idx++;
-    }
-
-    fread(&stl->tris[poly_idx].attr, 2, 1, f);
-
 }
 
 void usage(int e) {
