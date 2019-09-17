@@ -4,15 +4,18 @@ CFLAGS_DEBUG = ${CFLAGS_COMMON} -g
 CC = gcc
 LIBRARIES = -lglut -lGL -lGLU -lm
 
+src = $(wildcard *.c)
+obj = $(src:.c=.o)
+
 All: viewstl 
 
 debug: CFLAGS = $(CFLAGS_DEBUG)
 debug: viewstl
 
-viewstl: viewstl.o
-	$(CC) $(CFLAGS) -o $@ $< $(LIBRARIES)
+viewstl: $(obj)
+	$(CC) $(CFLAGS) -o $@ $^ $(LIBRARIES)
 
 rebuild: clean viewstl
 
 clean:
-	rm -v *.o viewstl
+	rm -v $(obj) viewstl
