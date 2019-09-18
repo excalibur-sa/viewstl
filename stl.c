@@ -16,7 +16,7 @@ void readStlAscii(FILE *f, STL_data *stl) {
             stl->tris = realloc(stl->tris, stl->_tris_malloc_size * 2);
             stl->_tris_malloc_size *= 2;
         }
-        if (sizeof(stl->_tris_malloc_size) > 1073741824) {
+        if (stl->_tris_malloc_size > 1073741824) {
             printf("STL data exceeds 1GB. Aborting...\n");
             abort();
         }
@@ -78,7 +78,7 @@ void readStlBinary(FILE *f, STL_data *stl) {
             stl->tris = realloc(stl->tris, stl->_tris_malloc_size * 2);
             stl->_tris_malloc_size *= 2;
         }
-        if (sizeof(stl->_tris_malloc_size) > 1073741824) {
+        if (stl->_tris_malloc_size > 1073741824) {
             printf("STL data exceeds 1GB. Aborting...\n");
             abort();
         }
