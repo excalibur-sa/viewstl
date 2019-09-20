@@ -541,9 +541,8 @@ int main(int argc, char *argv[])
         if (strcmp(argv[i], "-r") == 0)
             reload = YES;
 
-        if (filename == NULL) {
+        if (filename == NULL)
             filename = argv[i];
-        }
     }
 
     if (!filename) {
@@ -567,10 +566,7 @@ int main(int argc, char *argv[])
                model->extents.y_max, model->extents.z_min, model->extents.z_max);
     }
 
-    if (ViewFlag == ORTHO)
-        printf("Running in orthographic mode.\nNote: This mode is highly experimental.\n");
-    else if (ViewFlag == PERSPECTIVE)
-        printf("Running in perspective mode.\n");
+    printf("Running in %s mode.\n", (ViewFlag == PERSPECTIVE ? "perspective" : "orthographic"));
 
     if (!idle_draw)
         printf("Automatic redraw disabled.\n");
