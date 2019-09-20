@@ -39,8 +39,10 @@
 #include <math.h>       /* Gotta do some trig */
 #include <errno.h>      /* Error checking */
 #include <libgen.h>     /* basename() */
+#ifdef __linux__
 #include <sys/inotify.h> /* inotify interfaces */
 #include <sys/poll.h> /* needed for non-blocking inotify checks */
+#endif
 #include "stl.h"
 
 /* ASCII code for the various keys used */
