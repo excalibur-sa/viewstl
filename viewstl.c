@@ -70,7 +70,6 @@
 
 /* Declarations ------------------------------------- */
 char window_title[256];
-FILE *filein; /* Filehandle for the STL file to be viewed */
 char *filename;
 int window; /* The number of our GLUT window */
 int mem_size;
@@ -86,13 +85,10 @@ int ViewFlag = 0; /* 0=perspective, 1=ortho */
 int update = YES, idle_draw = YES;
 int verbose = NO, reload = NO;
 
-
 int reload_fd;
 int reload_wd;
 char reload_buffer[1024 * (sizeof(struct inotify_event) + 16)];
 struct pollfd reload_pfd[1];
-
-
 
 STL_data *model;
 
@@ -484,8 +480,48 @@ void usage(int e) {
     printf("  -f (Redraw only on view change)\n");
     printf("  -v (Report debug info to STDOUT)\n");
     printf("  -r (Reload model on file change. (Linux only)\n");
-    if (e)
-       exit(1);
+    if (e) exit(1);
+}
+
+STL_data* loadStlFile(const char* filepath) {
+    FILE *tmp_file = fopen(filepath, "rb");
+    if (tmp_file == NULL) {
+        int e = errno;
+        printf("viewstl: %s: %s\n\n", filepath, strerror(e));
+        usage(1);
+    }
+    struct stat path_stat;
+    fstat(fileno(tmp_file), &path_stat);
+    if (S_ISDIR(path_stat.st_mode)) {
+        fclose(tmp_file);
+        printf("viewstl: %s: %s\n\n", filepath, strerror(EISDIR));
+        usage(1);
+    }
+
+    STL_data *tmp_stl = malloc(sizeof(STL_data));
+    tmp_stl->extents.x_max = 0; tmp_stl->extents.x_min = 0;
+    tmp_stl->extents.y_max = 0; tmp_stl->extents.y_min = 0;
+    tmp_stl->extents.z_max = 0; tmp_stl->extents.z_min = 0;
+    tmp_stl->transform.pan_x = 0;
+    tmp_stl->transform.pan_y = 0;
+    tmp_stl->transform.rot_x = 0;
+    tmp_stl->transform.rot_y = 0;
+    tmp_stl->transform.scale = 1;
+    tmp_stl->transform.z_depth = -5;
+
+    char buf[80]; char *chk_p;
+    fread(buf, 1, sizeof(buf), tmp_file);
+    chk_p = strstr(buf, "solid");
+    if (!chk_p) { // STL is binary if chk_p is false
+        readStlBinary(tmp_file, tmp_stl);
+        tmp_stl->type = STL_TYPE_BINARY;
+    } else {
+        readStlAscii(tmp_file, tmp_stl);
+        tmp_stl->type = STL_TYPE_ASCII;
+    }
+
+    fclose(tmp_file);
+    return tmp_stl;
 }
 
 int main(int argc, char *argv[])
@@ -505,53 +541,18 @@ int main(int argc, char *argv[])
         if (strcmp(argv[i], "-r") == 0)
             reload = YES;
 
-        if (filein == NULL) {
-            filein = fopen(argv[i], "rb");
+        if (filename == NULL) {
             filename = argv[i];
-            if (filein == NULL) {
-                int e = errno;
-                printf("%s: %s: %s\n\n", argv[0], argv[i], strerror(e));
-                usage(1);
-            }
-            struct stat path_stat;
-            fstat(fileno(filein), &path_stat);
-            if (S_ISDIR(path_stat.st_mode)) {
-                fclose(filein);
-                printf("%s: %s: %s\n\n", argv[0], argv[i], strerror(EISDIR));
-                usage(1);
-            }
         }
     }
 
-    if (!filein) {
+    if (!filename) {
         printf("%s: No file was specified.\n", basename(argv[0]));
         usage(1);
     }
 
-    model = malloc(sizeof(STL_data));
-    model->extents.x_max = 0; model->extents.x_min = 0;
-    model->extents.y_max = 0; model->extents.y_min = 0;
-    model->extents.z_max = 0; model->extents.z_min = 0;
-    model->transform.pan_x = 0;
-    model->transform.pan_y = 0;
-    model->transform.rot_x = 0;
-    model->transform.rot_y = 0;
-    model->transform.scale = 1;
-    model->transform.z_depth = -5;
-
     if (verbose) printf("Loading file %s ...\n", filename);
-    char buf[80]; char *chk_p;
-    fread(buf, 1, sizeof(buf), filein);
-    chk_p = strstr(buf, "solid");
-    if (!chk_p) { // STL is binary if chk_p is false
-        readStlBinary(filein, model);
-        model->type = STL_TYPE_BINARY;
-    } else {
-        readStlAscii(filein, model);
-        model->type = STL_TYPE_ASCII;
-    }
-    rewind(filein);
-
+    model = loadStlFile(filename);
     if (verbose) printf("%i bytes allocated!\n", model->_tris_malloc_size);
 
     FindExtents(model);
