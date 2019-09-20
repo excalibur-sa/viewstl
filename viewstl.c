@@ -24,111 +24,318 @@
 
 // TODO: Replace sscanf with slightly safer alternatives. They can overrun their dest arrays currently.
 
-#include <GL/gl.h>   // OpenGL itself.
-#include <GL/glu.h>  // GLU support library.
-#include <GL/glut.h> // GLUT support library.
+#include "viewstl.h"
 
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <unistd.h>     /* needed to sleep*/
-#include <stdlib.h>    /* for malloc() and exit() */
-#include <stdio.h>      /* needed for file & screen i/o */
-#include <string.h>    /* for strcpy and relatives */
-#include <stdint.h>    /*uintn_t and intn_t*/
-#include <time.h>       /* For our FPS */
-#include <math.h>       /* Gotta do some trig */
-#include <errno.h>      /* Error checking */
-#include <libgen.h>     /* basename() */
-#ifdef __linux__
-#include <sys/inotify.h> /* inotify interfaces */
-#include <sys/poll.h> /* needed for non-blocking inotify checks */
-#endif
-#include "stl.h"
+/* A general OpenGL initialization function. */
+/* Called once from main() */
+void InitGL(int Width, int Height)	        /* We call this right after our OpenGL window is created.*/
+{
+    glClearColor(0.1f, 0.0f, 0.0f, 0.0f);		/* This Will Clear The Background Color To Dark Red*/
+    glClearDepth(1.0);				/* Enables Clearing Of The Depth Buffer*/
+    glDepthFunc(GL_LESS);			        /* The Type Of Depth Test To Do*/
+    glEnable(GL_DEPTH_TEST);		        /* Enables Depth Testing*/
+    glShadeModel(GL_SMOOTH);			/* Enables Smooth Color Shading*/
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();				/* Reset The Projection Matrix*/
 
-/* ASCII code for the various keys used */
-#define ESCAPE 27     /* esc */
-#define ROTyp  105    /* i   */
-#define ROTym  109    /* m   */
-#define ROTxp  107    /* k   */
-#define ROTxm  106    /* j   */
-#define SCAp   43     /* +   */   
-#define SCAm   45     /* -   */
-/* The mouse buttons */
-#define LMB 0	/* Left */
-#define MMB 1   /* Middle */
-#define RMB 2   /* Right */
-/* Number of samples for frame rate */
-#define FR_SAMPLES 10
-/* ViewFlag arguments */
-#define ORTHO 1
-#define PERSPECTIVE 0
-#define YES 1
-#define NO 0
-/* Other Constants */
-#define PI 3.14159265358979323846
-#define FOV 30   /* Field of view for perspective mode */
-#define PCR 2  /* Helps pan adapt to varying model sizes */
+    SetView(Width, Height, model);  /* Setup the View Matrix */
 
-
-/* Declarations ------------------------------------- */
-char window_title[256];
-char *filename;
-int window; /* The number of our GLUT window */
-int mem_size;
-int MOUSEx = 0, MOUSEy = 0, BUTTON = 0;
-/* Stuff for the frame rate calculation */
-int FrameCount=0;
-float FrameRate=0;
-/* Settings for the light  */
-float Light_Ambient[]=  { 0.1f, 0.1f, 0.1f, 1.0f };
-float Light_Diffuse[]=  { 1.2f, 1.2f, 1.2f, 1.0f }; 
-float Light_Position[]= { 2.0f, 2.0f, 0.0f, 1.0f };
-int ViewFlag = 0; /* 0=perspective, 1=ortho */
-int update = YES, idle_draw = YES;
-int verbose = NO, reload = NO;
-
-STL_data *model;
-
-#ifdef __linux__
-int reload_fd;
-int reload_wd;
-char reload_buffer[1024 * (sizeof(struct inotify_event) + 16)];
-struct pollfd reload_pfd[1];
-
-void usage(int e) {
-    printf("Usage: viewstl [OPTIONS]... [FILE]\n");
-    printf("View stereolithographic (.stl) 3D models.\n\n");
-    printf("  -o (Ortho View EXPEREMENTAL)\n");
-    printf("  -p (Perspective View [default])\n");
-    printf("  -f (Redraw only on view change)\n");
-    printf("  -v (Report debug info to STDOUT)\n");
-#ifdef __linux__
-    printf("  -r (Reload model on file change. - Experimental (Linux only)\n");
-#endif
-    if (e) exit(1);
+    glMatrixMode(GL_MODELVIEW);
+    glEnable(GL_LIGHTING);
+    /* Set up some lights and turn them on. */
+    glLightfv(GL_LIGHT1, GL_POSITION, Light_Position);
+    glLightfv(GL_LIGHT1, GL_AMBIENT,  Light_Ambient);
+    glLightfv(GL_LIGHT1, GL_DIFFUSE,  Light_Diffuse); 
+    glEnable (GL_LIGHT1); 
 }
 
-int checkFileChanged() {
-    if (poll(reload_pfd, 1, 0) < 1) return 0;
+/* The function called when our window is resized  */
+void ReSizeGLScene(int Width, int Height)
+{
+    if (Height==0)	/* Prevent A Divide By Zero If The Window Is Too Small*/
+        Height=1;
 
-    int length = read(reload_fd, reload_buffer, 1024 * (sizeof(struct inotify_event) + 16));
-    if (length < 0) return 0;
+    glViewport(0, 0, Width, Height);    /* Reset The Current Viewport And Perspective Transformation*/
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
 
-    int ptr = 0;
-    while (ptr < length) {
-        struct inotify_event *e = (struct inotify_event*) &reload_buffer[ptr];
-        if (!e->len) continue;
-        if (e->wd == reload_wd && strcmp(e->name, filename) == 0) return 1;
-        ptr += (sizeof(struct inotify_event) + e->len);
+    SetView(Width, Height, model);
+
+    glMatrixMode(GL_MODELVIEW);
+    update = YES;
+}
+
+/* Sets up Projection matrix according to command switch -o or -p */
+/* called from initgl and the window resize function */
+static void SetView(int Width, int Height, STL_data *stl)
+{
+    float aspect = (float)Width / (float)Height;
+    if (verbose)
+        printf("Window Aspect is: %f\n", aspect);
+
+    if (ViewFlag == PERSPECTIVE)
+        gluPerspective(FOV,(GLfloat)Width/(GLfloat)Height,0.1f,(stl->transform.z_depth + stl->extents.ext_max));
+    else if (ViewFlag == ORTHO)
+        glOrtho((stl->extents.x_min*1.2f), (stl->extents.x_max*1.2f), (stl->extents.y_min*aspect), (stl->extents.y_max*aspect), -1.0f, 10.0f);
+
+}
+
+/* The main drawing function. */
+void DrawGLScene()
+{
+    if ((!update) && (!idle_draw))
+        return;
+    update = NO;
+    glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);	/* Clear The Screen And The Depth Buffer*/
+    /* for now use two different methods of scaling depending on ortho or perspective */
+    if (ViewFlag == PERSPECTIVE)
+    {
+        glLoadIdentity();
+        glTranslatef(model->transform.pan_x, model->transform.pan_y, (model->transform.z_depth + model->transform.scale));
+        glRotatef(model->transform.rot_x, 1.0f, 0.0f, 0.0f);
+        glRotatef(model->transform.rot_y, 0.0f, 1.0f, 0.0f);
     }
-    return 0;
+
+    /* ortho scaling is broken */
+    if (ViewFlag == ORTHO)
+    {
+        glLoadIdentity();
+        glTranslatef(model->transform.pan_x, model->transform.pan_y, -5.0);
+        glRotatef(model->transform.rot_x, 1.0f, 0.0f, 0.0f);
+        glRotatef(model->transform.rot_y, 0.0f, 1.0f, 0.0f);
+
+    }
+    for(unsigned int idx = 0 ; idx < model->tris_size ; idx++)
+    {
+        STL_triangle *tri = &model->tris[idx];
+        glBegin(GL_POLYGON);
+        glNormal3f(tri->normal[0], tri->normal[1], tri->normal[2]);
+        glVertex3f(tri->vertex_a[0], tri->vertex_a[1], tri->vertex_a[2]);
+        glVertex3f(tri->vertex_b[0], tri->vertex_b[1], tri->vertex_b[2]);
+        glVertex3f(tri->vertex_c[0], tri->vertex_c[1], tri->vertex_c[2]);
+        glEnd();
+    }
+    /* swap the buffers to display, since double buffering is used.*/
+    glutSwapBuffers();
+    GetFPS();  /* Get frame rate stats */
+
+    /* Copy saved window name into temp string arg1 so that we can add stats */
+
+    /* cut down on the number of redraws on window title.  Only draw once per sample*/
+    if (FrameCount == 0) {
+        char window_title_fps[sizeof(window_title)+32];
+        snprintf(window_title_fps, sizeof(window_title_fps), "%s - %.2f FPS", window_title, FrameRate);
+        glutSetWindowTitle(window_title_fps);
+    }
+
+    if (reload && checkFileChanged()) {
+        printf("File change detected. Reloading model...\n");
+        glutHideWindow();
+        free(model->tris);
+        free(model);
+        loadStlFile(filename);
+        if (verbose) {
+            printf("File Processed\n");
+            printf("Poly Count = %u\n", model->tris_size);
+            printf("Part extents:\nx: %f/%f y: %f/%f z: %f/%f\n",
+                   model->extents.x_min, model->extents.x_max, model->extents.y_min,
+                   model->extents.y_max, model->extents.z_min, model->extents.z_max);
+        }
+        snprintf(window_title, sizeof(window_title), "ViewStl 1.0 viewing: %s (%s) - %i polys - %liKB (%iKB alloc)",
+                 filename, (model->type == STL_TYPE_ASCII ? "ascii" : "binary"),
+                 model->tris_size, (model->tris_size * sizeof(STL_triangle))/1024, model->_tris_malloc_size/1024);
+        glutShowWindow();
+    }
 }
 
-void inotify_cleanup() {
-    inotify_rm_watch(reload_fd, reload_wd);
-    close(reload_fd);
+/* Frame rate counter.  Based off of the Oreilly OGL demo !  */
+/* updates the global variables FrameCount & FrameRate each time it is called. */
+/* called from the main drawing function */
+static void GetFPS()
+{
+    static clock_t last=0;
+    clock_t now;
+    float delta;
+
+    if (++FrameCount >= FR_SAMPLES) {
+        now  = clock();
+        delta= (now - last) / (float) CLOCKS_PER_SEC;
+        last = now;
+
+        FrameRate = FR_SAMPLES / delta;
+        FrameCount = 0;
+    }
 }
-#endif
+
+/* The function called whenever a key is pressed. */
+void keyPressed(unsigned char key, int x, int y)
+{
+    /* Keyboard debounce */
+    /* I don't know which lib has this in win32 */
+    sleep(0.1);
+
+    /* Pressing escape kills everything --Have a nice day! */
+    if (key == ESCAPE)
+    {
+        /* shut down our window */
+        glutDestroyWindow(window);
+
+        /* exit the program...normal termination. */
+        exit(0);
+    }
+    if (verbose)
+        printf("You pressed key--> %i at %i, %i screen location\n", key, x, y);
+    update = YES;
+}
+
+/* This function is for the special keys.  */
+/* The dynamic viewing keys need to be time based */
+void specialkeyPressed (int key, int x, int y)
+{
+    /* keep track of time between calls, if it exceeds a certian value, then */
+    /* assume the user has released the key and wants to start fresh */
+    static int first = YES;
+    static clock_t last=0;
+    clock_t now;
+    float delta;
+
+    /* Properly initialize the MOUSE vars on first time through this function */
+    if (first)
+    {
+        first = NO;
+        MOUSEx = x;
+        MOUSEy = y;
+    }
+
+    /* If the clock exceeds a reasonable value, assume user has released F key */      now  = clock();
+    delta= (now - last) / (float) CLOCKS_PER_SEC;
+    last = now;
+    if (delta > 0.1)
+    {
+        MOUSEx = x;
+        MOUSEy = y;
+    }
+
+    switch(key) {
+        case 1: /* Pan is assigned the F1 key */
+            model->transform.pan_x += ((MOUSEx - x)*(tanf(0.26179939)*(model->transform.z_depth+model->transform.scale)))*.005;
+            model->transform.pan_y -= ((MOUSEy - y)*(tanf(0.26179939)*(model->transform.z_depth+model->transform.scale)))*.005;
+            MOUSEx = x; MOUSEy = y; break;
+        case 2: /* Zoom or Scale is the F2 key */
+            model->transform.scale += ((MOUSEy - y)*(tanf(0.26179939)*(model->transform.z_depth+model->transform.scale)))*.01;
+            model->transform.orth_scale += ((MOUSEy - y)*(tanf(0.26179939)*(model->transform.z_depth+model->transform.orth_scale)))*.01;
+            /* scale = scale - ((MOUSEy - y)*0.05);
+               oScale = oScale - ((MOUSEy - y)*0.05);  */
+            MOUSEx = x; MOUSEy = y; break;
+        case 3: /* Rotate assigned the F3 key */
+            model->transform.rot_y -= ((MOUSEx - x)*0.5);
+            model->transform.rot_x -= ((MOUSEy - y)*0.5);
+            MOUSEx = x; MOUSEy = y; break;
+        case 4: /* Cool Display Stuff... */
+            glPolygonMode(GL_FRONT, GL_FILL); break;
+        case 5:
+            glPolygonMode(GL_FRONT, GL_LINE);
+            glPolygonMode(GL_BACK, GL_FILL); break;
+        case 6:
+            glPolygonMode(GL_FRONT, GL_LINE);
+            glPolygonMode(GL_BACK, GL_POINT); break;
+        case 7:
+            glDisable(GL_CULL_FACE); break;
+        case 8:
+            glEnable(GL_CULL_FACE); break;
+        default:
+            break;
+    }
+    if (verbose)
+        printf("Special Key--> %i at %i, %i screen location\n", key, x, y);
+    update = YES;
+}
+
+/* The function called whenever a mouse button event occurs */
+void mouseButtonPress(int button, int state, int x, int y)
+{
+    if (verbose)
+        printf(" mouse--> %i %i %i %i\n", button, state, x, y); 
+    BUTTON = button;
+    MOUSEx = x;
+    MOUSEy = y;
+    update = YES;
+}
+
+/* The function called whenever a mouse motion event occurs */
+void mouseMotionPress(int x, int y)
+{
+    if (verbose)
+        printf("You did this with the mouse--> %i %i\n", x, y); 
+    if (BUTTON == LMB)
+    {
+        model->transform.pan_x += ((MOUSEx - x)*(tanf(0.26179939)*(model->transform.z_depth+model->transform.scale)))*.005;
+        model->transform.pan_y -= ((MOUSEy - y)*(tanf(0.26179939)*(model->transform.z_depth+model->transform.scale)))*.005;
+        MOUSEx = x;
+        MOUSEy = y;
+    } 
+    if (BUTTON == MMB)
+    {
+        model->transform.rot_x -= ((MOUSEy - y)*0.5);
+        model->transform.rot_y -= ((MOUSEx - x)*0.5);
+        MOUSEx = x;
+        MOUSEy = y;
+    } 
+    if (BUTTON == RMB)
+    {
+        model->transform.scale += ((MOUSEy - y)*(tanf(0.26179939)*(model->transform.z_depth+model->transform.scale)))*.01;
+        model->transform.orth_scale += ((MOUSEy - y)*(tanf(0.26179939)*(model->transform.z_depth+model->transform.orth_scale)))*.01;
+        MOUSEx = x;
+        MOUSEy = y;
+    } 
+    update = YES;
+}
+
+STL_data* loadStlFile(const char* filepath) {
+    if (verbose) printf("Loading file %s ...\n", filename);
+    FILE *tmp_file = fopen(filepath, "rb");
+    if (tmp_file == NULL) {
+        int e = errno;
+        printf("viewstl: %s: %s\n\n", filepath, strerror(e));
+        usage(1);
+    }
+    struct stat path_stat;
+    fstat(fileno(tmp_file), &path_stat);
+    if (S_ISDIR(path_stat.st_mode)) {
+        fclose(tmp_file);
+        printf("viewstl: %s: %s\n\n", filepath, strerror(EISDIR));
+        usage(1);
+    }
+
+    STL_data *tmp_stl = malloc(sizeof(STL_data));
+    tmp_stl->extents.x_max = 0; tmp_stl->extents.x_min = 0;
+    tmp_stl->extents.y_max = 0; tmp_stl->extents.y_min = 0;
+    tmp_stl->extents.z_max = 0; tmp_stl->extents.z_min = 0;
+    tmp_stl->transform.pan_x = 0;
+    tmp_stl->transform.pan_y = 0;
+    tmp_stl->transform.rot_x = 0;
+    tmp_stl->transform.rot_y = 0;
+    tmp_stl->transform.scale = 1;
+    tmp_stl->transform.z_depth = -5;
+
+    char buf[80]; char *chk_p;
+    fread(buf, 1, sizeof(buf), tmp_file);
+    chk_p = strstr(buf, "solid");
+    if (!chk_p) { // STL is binary if chk_p is false
+        readStlBinary(tmp_file, tmp_stl);
+        tmp_stl->type = STL_TYPE_BINARY;
+    } else {
+        readStlAscii(tmp_file, tmp_stl);
+        tmp_stl->type = STL_TYPE_ASCII;
+    }
+
+    if (verbose) printf("%i bytes allocated!\n", tmp_stl->_tris_malloc_size);
+    FindExtents(tmp_stl);
+    TransformToOrigin(tmp_stl);
+
+    fclose(tmp_file);
+    return tmp_stl;
+}
 
 /* This function reads through the array of polygons (poly_list) to find the */
 /* largest and smallest vertices in the model.  This data will be used by the */
@@ -231,330 +438,7 @@ static void TransformToOrigin(STL_data *stl) {
     }
 }
 
-/* Sets up Projection matrix according to command switch -o or -p */
-/* called from initgl and the window resize function */
-static void SetView(int Width, int Height, STL_data *stl)
-{
-    float aspect = (float)Width / (float)Height;
-    if (verbose)
-        printf("Window Aspect is: %f\n", aspect);
-
-    if (ViewFlag == PERSPECTIVE)
-        gluPerspective(FOV,(GLfloat)Width/(GLfloat)Height,0.1f,(stl->transform.z_depth + stl->extents.ext_max));
-    else if (ViewFlag == ORTHO)
-        glOrtho((stl->extents.x_min*1.2f), (stl->extents.x_max*1.2f), (stl->extents.y_min*aspect), (stl->extents.y_max*aspect), -1.0f, 10.0f);
-
-}
-
-
-/* Frame rate counter.  Based off of the Oreilly OGL demo !  */
-/* updates the global variables FrameCount & FrameRate each time it is called. */
-/* called from the main drawing function */
-static void GetFPS() 
-{
-    static clock_t last=0;
-    clock_t now;
-    float delta;
-
-    if (++FrameCount >= FR_SAMPLES) {
-        now  = clock();
-        delta= (now - last) / (float) CLOCKS_PER_SEC;
-        last = now;
-
-        FrameRate = FR_SAMPLES / delta;
-        FrameCount = 0;
-    }
-}
-
-
-/* A general OpenGL initialization function. */
-/* Called once from main() */
-void InitGL(int Width, int Height)	        /* We call this right after our OpenGL window is created.*/
-{
-    glClearColor(0.1f, 0.0f, 0.0f, 0.0f);		/* This Will Clear The Background Color To Dark Red*/
-    glClearDepth(1.0);				/* Enables Clearing Of The Depth Buffer*/
-    glDepthFunc(GL_LESS);			        /* The Type Of Depth Test To Do*/
-    glEnable(GL_DEPTH_TEST);		        /* Enables Depth Testing*/
-    glShadeModel(GL_SMOOTH);			/* Enables Smooth Color Shading*/
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();				/* Reset The Projection Matrix*/
-
-    SetView(Width, Height, model);  /* Setup the View Matrix */
-
-    glMatrixMode(GL_MODELVIEW);
-    glEnable(GL_LIGHTING);
-    /* Set up some lights and turn them on. */
-    glLightfv(GL_LIGHT1, GL_POSITION, Light_Position);
-    glLightfv(GL_LIGHT1, GL_AMBIENT,  Light_Ambient);
-    glLightfv(GL_LIGHT1, GL_DIFFUSE,  Light_Diffuse); 
-    glEnable (GL_LIGHT1); 
-}
-
-
-/* The function called when our window is resized  */
-void ReSizeGLScene(int Width, int Height)
-{
-    if (Height==0)	/* Prevent A Divide By Zero If The Window Is Too Small*/
-        Height=1;
-
-    glViewport(0, 0, Width, Height);    /* Reset The Current Viewport And Perspective Transformation*/
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
-
-    SetView(Width, Height, model);
-
-    glMatrixMode(GL_MODELVIEW);
-    update = YES;
-}
-
-STL_data* loadStlFile(const char* filepath) {
-    if (verbose) printf("Loading file %s ...\n", filename);
-    FILE *tmp_file = fopen(filepath, "rb");
-    if (tmp_file == NULL) {
-        int e = errno;
-        printf("viewstl: %s: %s\n\n", filepath, strerror(e));
-        usage(1);
-    }
-    struct stat path_stat;
-    fstat(fileno(tmp_file), &path_stat);
-    if (S_ISDIR(path_stat.st_mode)) {
-        fclose(tmp_file);
-        printf("viewstl: %s: %s\n\n", filepath, strerror(EISDIR));
-        usage(1);
-    }
-
-    STL_data *tmp_stl = malloc(sizeof(STL_data));
-    tmp_stl->extents.x_max = 0; tmp_stl->extents.x_min = 0;
-    tmp_stl->extents.y_max = 0; tmp_stl->extents.y_min = 0;
-    tmp_stl->extents.z_max = 0; tmp_stl->extents.z_min = 0;
-    tmp_stl->transform.pan_x = 0;
-    tmp_stl->transform.pan_y = 0;
-    tmp_stl->transform.rot_x = 0;
-    tmp_stl->transform.rot_y = 0;
-    tmp_stl->transform.scale = 1;
-    tmp_stl->transform.z_depth = -5;
-
-    char buf[80]; char *chk_p;
-    fread(buf, 1, sizeof(buf), tmp_file);
-    chk_p = strstr(buf, "solid");
-    if (!chk_p) { // STL is binary if chk_p is false
-        readStlBinary(tmp_file, tmp_stl);
-        tmp_stl->type = STL_TYPE_BINARY;
-    } else {
-        readStlAscii(tmp_file, tmp_stl);
-        tmp_stl->type = STL_TYPE_ASCII;
-    }
-
-    if (verbose) printf("%i bytes allocated!\n", tmp_stl->_tris_malloc_size);
-    FindExtents(tmp_stl);
-    TransformToOrigin(tmp_stl);
-
-    fclose(tmp_file);
-    return tmp_stl;
-}
-
-/* The main drawing function. */
-void DrawGLScene()
-{
-    if ((!update) && (!idle_draw))
-        return;
-    update = NO;
-    glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);	/* Clear The Screen And The Depth Buffer*/
-    /* for now use two different methods of scaling depending on ortho or perspective */
-    if (ViewFlag == PERSPECTIVE)
-    {
-        glLoadIdentity();
-        glTranslatef(model->transform.pan_x, model->transform.pan_y, (model->transform.z_depth + model->transform.scale));
-        glRotatef(model->transform.rot_x, 1.0f, 0.0f, 0.0f);
-        glRotatef(model->transform.rot_y, 0.0f, 1.0f, 0.0f);
-    }
-
-    /* ortho scaling is broken */
-    if (ViewFlag == ORTHO)
-    {
-        glLoadIdentity();
-        glTranslatef(model->transform.pan_x, model->transform.pan_y, -5.0);
-        glRotatef(model->transform.rot_x, 1.0f, 0.0f, 0.0f);
-        glRotatef(model->transform.rot_y, 0.0f, 1.0f, 0.0f);
-
-    }
-    for(unsigned int idx = 0 ; idx < model->tris_size ; idx++)
-    {
-        STL_triangle *tri = &model->tris[idx];
-        glBegin(GL_POLYGON);
-        glNormal3f(tri->normal[0], tri->normal[1], tri->normal[2]);
-        glVertex3f(tri->vertex_a[0], tri->vertex_a[1], tri->vertex_a[2]);
-        glVertex3f(tri->vertex_b[0], tri->vertex_b[1], tri->vertex_b[2]);
-        glVertex3f(tri->vertex_c[0], tri->vertex_c[1], tri->vertex_c[2]);
-        glEnd();
-    }
-    /* swap the buffers to display, since double buffering is used.*/
-    glutSwapBuffers();
-    GetFPS();  /* Get frame rate stats */
-
-    /* Copy saved window name into temp string arg1 so that we can add stats */
-
-    /* cut down on the number of redraws on window title.  Only draw once per sample*/
-    if (FrameCount == 0) {
-        char window_title_fps[sizeof(window_title)+32];
-        snprintf(window_title_fps, sizeof(window_title_fps), "%s - %.2f FPS", window_title, FrameRate);
-        glutSetWindowTitle(window_title_fps);
-    }
-
-    if (reload && checkFileChanged()) {
-        printf("File change detected. Reloading model...\n");
-        glutHideWindow();
-        free(model->tris);
-        free(model);
-        loadStlFile(filename);
-        if (verbose) {
-            printf("File Processed\n");
-            printf("Poly Count = %u\n", model->tris_size);
-            printf("Part extents:\nx: %f/%f y: %f/%f z: %f/%f\n",
-                   model->extents.x_min, model->extents.x_max, model->extents.y_min,
-                   model->extents.y_max, model->extents.z_min, model->extents.z_max);
-        }
-        snprintf(window_title, sizeof(window_title), "ViewStl 1.0 viewing: %s (%s) - %i polys - %liKB (%iKB alloc)",
-                 filename, (model->type == STL_TYPE_ASCII ? "ascii" : "binary"),
-                 model->tris_size, (model->tris_size * sizeof(STL_triangle))/1024, model->_tris_malloc_size/1024);
-        glutShowWindow();
-    }
-}
-
-
-/* The function called whenever a mouse button event occurs */
-void mouseButtonPress(int button, int state, int x, int y)
-{
-    if (verbose)
-        printf(" mouse--> %i %i %i %i\n", button, state, x, y); 
-    BUTTON = button;
-    MOUSEx = x;
-    MOUSEy = y;
-    update = YES;
-}
-
-
-/* The function called whenever a mouse motion event occurs */
-void mouseMotionPress(int x, int y)
-{
-    if (verbose)
-        printf("You did this with the mouse--> %i %i\n", x, y); 
-    if (BUTTON == LMB)
-    {
-        model->transform.pan_x += ((MOUSEx - x)*(tanf(0.26179939)*(model->transform.z_depth+model->transform.scale)))*.005;
-        model->transform.pan_y -= ((MOUSEy - y)*(tanf(0.26179939)*(model->transform.z_depth+model->transform.scale)))*.005;
-        MOUSEx = x;
-        MOUSEy = y;
-    } 
-    if (BUTTON == MMB)
-    {
-        model->transform.rot_x -= ((MOUSEy - y)*0.5);
-        model->transform.rot_y -= ((MOUSEx - x)*0.5);
-        MOUSEx = x;
-        MOUSEy = y;
-    } 
-    if (BUTTON == RMB)
-    {
-        model->transform.scale += ((MOUSEy - y)*(tanf(0.26179939)*(model->transform.z_depth+model->transform.scale)))*.01;
-        model->transform.orth_scale += ((MOUSEy - y)*(tanf(0.26179939)*(model->transform.z_depth+model->transform.orth_scale)))*.01;
-        MOUSEx = x;
-        MOUSEy = y;
-    } 
-    update = YES;
-}
-
-
-/* The function called whenever a key is pressed. */
-void keyPressed(unsigned char key, int x, int y) 
-{
-    /* Keyboard debounce */
-    /* I don't know which lib has this in win32 */
-    sleep(0.1);
-
-    /* Pressing escape kills everything --Have a nice day! */
-    if (key == ESCAPE) 
-    { 
-        /* shut down our window */
-        glutDestroyWindow(window); 
-
-        /* exit the program...normal termination. */
-        exit(0);                   
-    }
-    if (verbose)
-        printf("You pressed key--> %i at %i, %i screen location\n", key, x, y);
-    update = YES;
-}
-
-
-/* This function is for the special keys.  */
-/* The dynamic viewing keys need to be time based */
-void specialkeyPressed (int key, int x, int y)
-{
-    /* keep track of time between calls, if it exceeds a certian value, then */
-    /* assume the user has released the key and wants to start fresh */
-    static int first = YES;
-    static clock_t last=0;
-    clock_t now;
-    float delta;
-
-    /* Properly initialize the MOUSE vars on first time through this function */
-    if (first)
-    {
-        first = NO;
-        MOUSEx = x;
-        MOUSEy = y;
-    }
-
-    /* If the clock exceeds a reasonable value, assume user has released F key */      now  = clock();
-    delta= (now - last) / (float) CLOCKS_PER_SEC;
-    last = now;
-    if (delta > 0.1)
-    {
-        MOUSEx = x;
-        MOUSEy = y;
-    }
-
-    switch(key) {
-        case 1: /* Pan is assigned the F1 key */
-            model->transform.pan_x += ((MOUSEx - x)*(tanf(0.26179939)*(model->transform.z_depth+model->transform.scale)))*.005;
-            model->transform.pan_y -= ((MOUSEy - y)*(tanf(0.26179939)*(model->transform.z_depth+model->transform.scale)))*.005;
-            MOUSEx = x; MOUSEy = y; break;
-        case 2: /* Zoom or Scale is the F2 key */
-            model->transform.scale += ((MOUSEy - y)*(tanf(0.26179939)*(model->transform.z_depth+model->transform.scale)))*.01;
-            model->transform.orth_scale += ((MOUSEy - y)*(tanf(0.26179939)*(model->transform.z_depth+model->transform.orth_scale)))*.01;
-            /* scale = scale - ((MOUSEy - y)*0.05);
-               oScale = oScale - ((MOUSEy - y)*0.05);  */
-            MOUSEx = x; MOUSEy = y; break;
-        case 3: /* Rotate assigned the F3 key */
-            model->transform.rot_y -= ((MOUSEx - x)*0.5);
-            model->transform.rot_x -= ((MOUSEy - y)*0.5);
-            MOUSEx = x; MOUSEy = y; break;
-        case 4: /* Cool Display Stuff... */
-            glPolygonMode(GL_FRONT, GL_FILL); break;
-        case 5:
-            glPolygonMode(GL_FRONT, GL_LINE);
-            glPolygonMode(GL_BACK, GL_FILL); break;
-        case 6:
-            glPolygonMode(GL_FRONT, GL_LINE);
-            glPolygonMode(GL_BACK, GL_POINT); break;
-        case 7:
-            glDisable(GL_CULL_FACE); break;
-        case 8:
-            glEnable(GL_CULL_FACE); break;
-        default:
-            break;
-    }
-    if (verbose)   
-        printf("Special Key--> %i at %i, %i screen location\n", key, x, y);
-    update = YES;
-}
-
-
-
-
-
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "-o") == 0)
             ViewFlag = ORTHO;
@@ -653,4 +537,39 @@ int main(int argc, char *argv[])
     return 1;
 }
 
+void usage(int e) {
+    printf("Usage: viewstl [OPTIONS]... [FILE]\n");
+    printf("View stereolithographic (.stl) 3D models.\n\n");
+    printf("  -o (Ortho View EXPEREMENTAL)\n");
+    printf("  -p (Perspective View [default])\n");
+    printf("  -f (Redraw only on view change)\n");
+    printf("  -v (Report debug info to STDOUT)\n");
+#ifdef __linux__
+    printf("  -r (Reload model on file change. - Experimental (Linux only)\n");
+#endif
+    if (e) exit(1);
+}
+
+#ifdef __linux__
+int checkFileChanged() {
+    if (poll(reload_pfd, 1, 0) < 1) return 0;
+
+    int length = read(reload_fd, reload_buffer, 1024 * (sizeof(struct inotify_event) + 16));
+    if (length < 0) return 0;
+
+    int ptr = 0;
+    while (ptr < length) {
+        struct inotify_event *e = (struct inotify_event*) &reload_buffer[ptr];
+        if (!e->len) continue;
+        if (e->wd == reload_wd && strcmp(e->name, filename) == 0) return 1;
+        ptr += (sizeof(struct inotify_event) + e->len);
+    }
+    return 0;
+}
+
+void inotify_cleanup() {
+    inotify_rm_watch(reload_fd, reload_wd);
+    close(reload_fd);
+}
+#endif
 
