@@ -95,6 +95,19 @@ int reload_wd;
 char reload_buffer[1024 * (sizeof(struct inotify_event) + 16)];
 struct pollfd reload_pfd[1];
 
+void usage(int e) {
+    printf("Usage: viewstl [OPTIONS]... [FILE]\n");
+    printf("View stereolithographic (.stl) 3D models.\n\n");
+    printf("  -o (Ortho View EXPEREMENTAL)\n");
+    printf("  -p (Perspective View [default])\n");
+    printf("  -f (Redraw only on view change)\n");
+    printf("  -v (Report debug info to STDOUT)\n");
+#ifdef __linux__
+    printf("  -r (Reload model on file change. - Experimental (Linux only)\n");
+#endif
+    if (e) exit(1);
+}
+
 int checkFileChanged() {
     if (poll(reload_pfd, 1, 0) < 1) return 0;
 
@@ -294,6 +307,51 @@ void ReSizeGLScene(int Width, int Height)
     update = YES;
 }
 
+STL_data* loadStlFile(const char* filepath) {
+    if (verbose) printf("Loading file %s ...\n", filename);
+    FILE *tmp_file = fopen(filepath, "rb");
+    if (tmp_file == NULL) {
+        int e = errno;
+        printf("viewstl: %s: %s\n\n", filepath, strerror(e));
+        usage(1);
+    }
+    struct stat path_stat;
+    fstat(fileno(tmp_file), &path_stat);
+    if (S_ISDIR(path_stat.st_mode)) {
+        fclose(tmp_file);
+        printf("viewstl: %s: %s\n\n", filepath, strerror(EISDIR));
+        usage(1);
+    }
+
+    STL_data *tmp_stl = malloc(sizeof(STL_data));
+    tmp_stl->extents.x_max = 0; tmp_stl->extents.x_min = 0;
+    tmp_stl->extents.y_max = 0; tmp_stl->extents.y_min = 0;
+    tmp_stl->extents.z_max = 0; tmp_stl->extents.z_min = 0;
+    tmp_stl->transform.pan_x = 0;
+    tmp_stl->transform.pan_y = 0;
+    tmp_stl->transform.rot_x = 0;
+    tmp_stl->transform.rot_y = 0;
+    tmp_stl->transform.scale = 1;
+    tmp_stl->transform.z_depth = -5;
+
+    char buf[80]; char *chk_p;
+    fread(buf, 1, sizeof(buf), tmp_file);
+    chk_p = strstr(buf, "solid");
+    if (!chk_p) { // STL is binary if chk_p is false
+        readStlBinary(tmp_file, tmp_stl);
+        tmp_stl->type = STL_TYPE_BINARY;
+    } else {
+        readStlAscii(tmp_file, tmp_stl);
+        tmp_stl->type = STL_TYPE_ASCII;
+    }
+
+    if (verbose) printf("%i bytes allocated!\n", tmp_stl->_tris_malloc_size);
+    FindExtents(tmp_stl);
+    TransformToOrigin(tmp_stl);
+
+    fclose(tmp_file);
+    return tmp_stl;
+}
 
 /* The main drawing function. */
 void DrawGLScene()
@@ -344,7 +402,22 @@ void DrawGLScene()
     }
 
     if (reload && checkFileChanged()) {
-        printf("File change detected. Reloading model... (unimplemented)\n");
+        printf("File change detected. Reloading model...\n");
+        glutHideWindow();
+        free(model->tris);
+        free(model);
+        loadStlFile(filename);
+        if (verbose) {
+            printf("File Processed\n");
+            printf("Poly Count = %u\n", model->tris_size);
+            printf("Part extents:\nx: %f/%f y: %f/%f z: %f/%f\n",
+                   model->extents.x_min, model->extents.x_max, model->extents.y_min,
+                   model->extents.y_max, model->extents.z_min, model->extents.z_max);
+        }
+        snprintf(window_title, sizeof(window_title), "ViewStl 1.0 viewing: %s (%s) - %i polys - %liKB (%iKB alloc)",
+                 filename, (model->type == STL_TYPE_ASCII ? "ascii" : "binary"),
+                 model->tris_size, (model->tris_size * sizeof(STL_triangle))/1024, model->_tris_malloc_size/1024);
+        glutShowWindow();
     }
 }
 
@@ -476,59 +549,9 @@ void specialkeyPressed (int key, int x, int y)
     update = YES;
 }
 
-void usage(int e) {
-    printf("Usage: viewstl [OPTIONS]... [FILE]\n");
-    printf("View stereolithographic (.stl) 3D models.\n\n");
-    printf("  -o (Ortho View EXPEREMENTAL)\n");
-    printf("  -p (Perspective View [default])\n");
-    printf("  -f (Redraw only on view change)\n");
-    printf("  -v (Report debug info to STDOUT)\n");
-#ifdef __linux__
-    printf("  -r (Reload model on file change. (Linux only)\n");
-#endif
-    if (e) exit(1);
-}
 
-STL_data* loadStlFile(const char* filepath) {
-    FILE *tmp_file = fopen(filepath, "rb");
-    if (tmp_file == NULL) {
-        int e = errno;
-        printf("viewstl: %s: %s\n\n", filepath, strerror(e));
-        usage(1);
-    }
-    struct stat path_stat;
-    fstat(fileno(tmp_file), &path_stat);
-    if (S_ISDIR(path_stat.st_mode)) {
-        fclose(tmp_file);
-        printf("viewstl: %s: %s\n\n", filepath, strerror(EISDIR));
-        usage(1);
-    }
 
-    STL_data *tmp_stl = malloc(sizeof(STL_data));
-    tmp_stl->extents.x_max = 0; tmp_stl->extents.x_min = 0;
-    tmp_stl->extents.y_max = 0; tmp_stl->extents.y_min = 0;
-    tmp_stl->extents.z_max = 0; tmp_stl->extents.z_min = 0;
-    tmp_stl->transform.pan_x = 0;
-    tmp_stl->transform.pan_y = 0;
-    tmp_stl->transform.rot_x = 0;
-    tmp_stl->transform.rot_y = 0;
-    tmp_stl->transform.scale = 1;
-    tmp_stl->transform.z_depth = -5;
 
-    char buf[80]; char *chk_p;
-    fread(buf, 1, sizeof(buf), tmp_file);
-    chk_p = strstr(buf, "solid");
-    if (!chk_p) { // STL is binary if chk_p is false
-        readStlBinary(tmp_file, tmp_stl);
-        tmp_stl->type = STL_TYPE_BINARY;
-    } else {
-        readStlAscii(tmp_file, tmp_stl);
-        tmp_stl->type = STL_TYPE_ASCII;
-    }
-
-    fclose(tmp_file);
-    return tmp_stl;
-}
 
 int main(int argc, char *argv[])
 {
@@ -557,16 +580,10 @@ int main(int argc, char *argv[])
         usage(1);
     }
 
-    if (verbose) printf("Loading file %s ...\n", filename);
     model = loadStlFile(filename);
-    if (verbose) printf("%i bytes allocated!\n", model->_tris_malloc_size);
-
-    FindExtents(model);
-    TransformToOrigin(model);
 
     if (verbose) {
         printf("File Processed\n");
-        //printf("Poly Count = %i\n", old_poly_count);
         printf("Poly Count = %u\n", model->tris_size);
         printf("Part extents:\nx: %f/%f y: %f/%f z: %f/%f\n",
                model->extents.x_min, model->extents.x_max, model->extents.y_min,
@@ -608,12 +625,11 @@ int main(int argc, char *argv[])
     glutInitWindowSize(640, 480);  
 
     /* the window starts at the upper left corner of the screen */
-    glutInitWindowPosition(0, 0);  
+    glutInitWindowPosition(0, 0);
 
     snprintf(window_title, sizeof(window_title), "ViewStl 1.0 viewing: %s (%s) - %i polys - %liKB (%iKB alloc)",
-            filename, (model->type == STL_TYPE_ASCII ? "ascii" : "binary"),
-            model->tris_size, (model->tris_size * sizeof(STL_triangle))/1024, model->_tris_malloc_size/1024);
-
+             filename, (model->type == STL_TYPE_ASCII ? "ascii" : "binary"),
+             model->tris_size, (model->tris_size * sizeof(STL_triangle))/1024, model->_tris_malloc_size/1024);
     window = glutCreateWindow(window_title);
 
     /* Register the event callback functions since we are using GLUT */
