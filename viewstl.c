@@ -85,12 +85,13 @@ int ViewFlag = 0; /* 0=perspective, 1=ortho */
 int update = YES, idle_draw = YES;
 int verbose = NO, reload = NO;
 
+STL_data *model;
+
+#ifdef __linux__
 int reload_fd;
 int reload_wd;
 char reload_buffer[1024 * (sizeof(struct inotify_event) + 16)];
 struct pollfd reload_pfd[1];
-
-STL_data *model;
 
 int checkFileChanged() {
     if (poll(reload_pfd, 1, 0) < 1) return 0;
@@ -108,10 +109,11 @@ int checkFileChanged() {
     return 0;
 }
 
-void cleanup() {
+void inotify_cleanup() {
     inotify_rm_watch(reload_fd, reload_wd);
     close(reload_fd);
 }
+#endif
 
 /* This function reads through the array of polygons (poly_list) to find the */
 /* largest and smallest vertices in the model.  This data will be used by the */
@@ -479,7 +481,9 @@ void usage(int e) {
     printf("  -p (Perspective View [default])\n");
     printf("  -f (Redraw only on view change)\n");
     printf("  -v (Report debug info to STDOUT)\n");
+#ifdef __linux__
     printf("  -r (Reload model on file change. (Linux only)\n");
+#endif
     if (e) exit(1);
 }
 
@@ -537,9 +541,10 @@ int main(int argc, char *argv[])
 
         if (strcmp(argv[i], "-v") == 0)
             verbose = YES;
-
+#ifdef __linux__
         if (strcmp(argv[i], "-r") == 0)
             reload = YES;
+#endif
 
         if (filename == NULL)
             filename = argv[i];
@@ -571,6 +576,7 @@ int main(int argc, char *argv[])
     if (!idle_draw)
         printf("Automatic redraw disabled.\n");
 
+#ifdef __linux__
     if (reload) {
         reload_fd = inotify_init();
 
@@ -584,6 +590,7 @@ int main(int argc, char *argv[])
             printf("Watching for file changes.\n");
         }
     }
+#endif
 
     /* Initialize GLUT state - glut will take any command line arguments that pertain to it or 
        X Windows - look at its documentation at http://reality.sgi.com/mjk/spec3/spec3.html */  
@@ -620,7 +627,9 @@ int main(int argc, char *argv[])
     InitGL(640, 480);
 
     /* Start Event Processing Engine */
-    atexit(cleanup);
+#ifdef __linux__
+    atexit(inotify_cleanup);
+#endif
     glutMainLoop();  
 
     return 1;
