@@ -12,6 +12,9 @@ If for whatever silly reason you're on Windows or IRIX in $CURRENT_YEAR you can 
 #### Planned Features/Changes
 - [ ] Move from GLUT to SDL2.
 - [ ] Add support for OpenGL3 rendering.
-- [ ] Add support for automatically detecting and displaying changes to the currently viewed STL file.
+- [x] Add support for automatically detecting and displaying changes to the currently viewed STL file.
+- [ ] Extend auto-reload to support FreeBSD.
 - [ ] Possibly a name change with support for more formats.
 - [x] Support for binary STL files.
+
+*Note: Reloading is only supported on Linux. FreeBSD auto-reload will be added in the future. It's also worth noting that there may still be some bugs in the auto-reload feature, namely race conditions between the file being fully written and viewstl reading it.*
